@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+// Response is used both as a cache object for the response
+// and to wrap http.ResponseWriter for downstream requests.
 type Response struct {
 	found   bool
 	expires time.Time
@@ -14,8 +16,6 @@ type Response struct {
 	body    []byte
 }
 
-// Response is used both as a cache object for the response
-//   and to wrap http.ResponseWriter for downstream requests.
 func (res *Response) Write(b []byte) (int, error) {
 	res.body = append(res.body, b...)
 	return len(b), nil

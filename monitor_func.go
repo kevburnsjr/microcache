@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// MonitorFunc turns a function into a Monitor
 func MonitorFunc(interval time.Duration, logFunc func(int, int, float64, float64, float64)) monitorFunc {
 	return monitorFunc{
 		interval: interval,

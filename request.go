@@ -18,9 +18,9 @@ func getRequestHash(m *microcache, r *http.Request) string {
 	return reqHash
 }
 
-// Request is used to store per-request cache options. This is necessary to allow
-//   custom response headers to be evaluated, cached and applied prior to
-//   response object retrieval (ie. microcache-vary, microcache-nocache, etc)
+// RequestOpts stores per-request cache options. This is necessary to allow
+// custom response headers to be evaluated, cached and applied prior to
+// response object retrieval (ie. microcache-vary, microcache-nocache, etc)
 type RequestOpts struct {
 	found                bool
 	ttl                  time.Duration

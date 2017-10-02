@@ -1,8 +1,8 @@
-// microcache is an HTTP cache implemented as Go http middleware.
+// microcache is an HTTP cache implemented as Go middleware.
 // Useful for APIs which serve large numbers of identical responses.
 // Especially useful in high traffic microservices to improve efficiency by
-//   reducing read traffic through collapsed forwarding and improve availability
-//   by serving stale responses should synchronous dependencies become unavailable.
+// reducing read traffic through collapsed forwarding and improve availability
+// by serving stale responses should synchronous dependencies become unavailable.
 package microcache
 
 import (
@@ -39,7 +39,7 @@ type Config struct {
 
 	// StaleIfError specifies a default stale grace period
 	// If a request fails and StaleIfError is set, the object will be served as stale
-	//   and the response will be re-cached for the duration of this grace period
+	// and the response will be re-cached for the duration of this grace period
 	// Can be overridden by the microcache-ttl-stale response header
 	// More Info: https://tools.ietf.org/html/rfc5861
 	// Recommended: 20s
@@ -47,16 +47,16 @@ type Config struct {
 	StaleIfError time.Duration
 
 	// StaleWhileRevalidate specifies a period during which a stale response may be
-	//   served immediately while the resource is fetched in the background. This can be
-	//   useful for ensuring consistent response times at the cost of content freshness.
+	// served immediately while the resource is fetched in the background. This can be
+	// useful for ensuring consistent response times at the cost of content freshness.
 	// More Info: https://tools.ietf.org/html/rfc5861
 	// Recommended: 20s
 	// Default: 0
 	StaleWhileRevalidate time.Duration
 
 	// StaleWhileRevalidate specifies a period during which a stale response may be
-	//   served immediately while the resource is fetched in the background. This can be
-	//   useful for ensuring consistent response times at the cost of content freshness.
+	// served immediately while the resource is fetched in the background. This can be
+	// useful for ensuring consistent response times at the cost of content freshness.
 	// Recommended: 20s
 	// Default: 0
 	CollapsedFowarding bool
@@ -74,20 +74,22 @@ type Config struct {
 
 	// Timeout specifies the maximum execution time for backend responses
 	// Example: If the underlying handler takes more than 10s to respond,
-	//	 the request is cancelled and the response is treated as 503
+	// the request is cancelled and the response is treated as 503
 	// Recommended: 10s
 	// Default: 0
 	Timeout time.Duration
 
 	// HashQuery determines whether all query parameters in the request URI
-	//   should be hashed to differentiate requests
+	// should be hashed to differentiate requests
 	// Default: false
 	HashQuery bool
 
 	// Vary specifies a list of http request headers by which all requests
-	//   should be differentiated. When making use of this option, it may be a good idea
-	//   to normalize these headers first using a separate piece of middleware.
-	// Example: []string{"accept-language", "accept-encoding", "xml-http-request"}
+	// should be differentiated. When making use of this option, it may be a good idea
+	// to normalize these headers first using a separate piece of middleware.
+	//
+	//   []string{"accept-language", "accept-encoding", "xml-http-request"}
+	//
 	// Default: []string{}
 	Vary []string
 
@@ -96,7 +98,7 @@ type Config struct {
 	Driver Driver
 
 	// Monitor is an optional parameter which will periodically report statistics about
-	//   the cache to enable monitoring of cache size, cache efficiency and error rate
+	// the cache to enable monitoring of cache size, cache efficiency and error rate
 	// Default: nil
 	Monitor Monitor
 
@@ -132,10 +134,13 @@ func New(o Config) microcache {
 // Middleware can be used to wrap an HTTP handler with microcache functionality.
 // It can also be passed to http middleware providers like alice as a constructor.
 //
-// Example: mx := microcache.New(microcache.Config{TTL: 10 * time.Second})
-//          newHandler := mx.Middleware(yourHandler)
+//   mx := microcache.New(microcache.Config{TTL: 10 * time.Second})
+//   newHandler := mx.Middleware(yourHandler)
 //
-// Or with alice: chain.Append(mx.Middleware)
+// Or with alice
+//
+//  chain.Append(mx.Middleware)
+//
 func (m *microcache) Middleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Websocket passthrough
