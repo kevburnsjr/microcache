@@ -6,7 +6,7 @@ import (
 )
 
 // MonitorFunc turns a function into a Monitor
-func MonitorFunc(interval time.Duration, logFunc func(int, int, float64, float64, float64)) monitorFunc {
+func MonitorFunc(interval time.Duration, logFunc func(MonitorStats)) monitorFunc {
 	return monitorFunc{
 		interval: interval,
 		logFunc:  logFunc,
@@ -15,7 +15,7 @@ func MonitorFunc(interval time.Duration, logFunc func(int, int, float64, float64
 
 type monitorFunc struct {
 	interval   time.Duration
-	logFunc    func(objectCount int, size int, hitRate float64, missRate float64, errorRate float64)
+	logFunc    func(MonitorStats)
 	hits       int
 	hitMutex   sync.Mutex
 	misses     int
@@ -30,9 +30,9 @@ func (m *monitorFunc) GetInterval() time.Duration {
 	return m.interval
 }
 
-func (m *monitorFunc) Log(objectCount int, size int) {
+func (m *monitorFunc) Log(size int) {
 	total := m.hits + m.misses
-	m.logFunc(objectCount, size, float64(m.hits/total), float64(m.misses/total), float64(m.errors/total))
+	m.logFunc(MonitorStats{size, float64(m.hits/total), float64(m.errors/total)})
 }
 
 func (m *monitorFunc) Hit() {
