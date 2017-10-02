@@ -4,6 +4,8 @@ Especially useful in high traffic microservices to improve efficiency by
 reducing read traffic through collapsed forwarding and improve availability
 by serving stale responses should downstream services become unavailable.
 
+https://godoc.org/github.com/httpimp/microcache
+
 ## Notes
 
 ```
