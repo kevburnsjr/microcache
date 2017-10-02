@@ -1,8 +1,4 @@
 // microcache is an HTTP cache implemented as Go middleware.
-// Useful for APIs which serve large numbers of identical responses.
-// Especially useful in high traffic microservices to improve efficiency by
-// reducing read traffic through collapsed forwarding and improve availability
-// by serving stale responses should synchronous dependencies become unavailable.
 package microcache
 
 import (
