@@ -246,15 +246,16 @@ func (m *microcache) handleBackendResponse(
 
 	// Serve Stale
 	if beres.status >= 500 && obj.found {
+		serveStale := obj.expires.Add(req.staleIfError).After(time.Now())
 		// Extend stale response expiration by staleIfError grace period
-		if req.found && req.staleRecache {
+		if req.found && serveStale && req.staleRecache {
 			obj.setExpires(req.ttl, req.ttlSync)
 			m.Driver.Set(objHash, obj)
 		}
 		if m.Monitor != nil {
 			m.Monitor.Error()
 		}
-		if !revalidating && obj.expires.Add(req.staleIfError).After(time.Now()) {
+		if !revalidating && serveStale {
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
