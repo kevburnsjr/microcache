@@ -161,6 +161,12 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		reqHash := getRequestHash(m, r)
 		req := m.Driver.GetRequestOpts(reqHash)
 
+		// Hard passthrough on non cacheable requests
+		if req.nocache {
+			h.ServeHTTP(w, r)
+			return
+		}
+
 		// Fetch cached response object
 		var objHash string
 		var obj Response
@@ -261,10 +267,8 @@ func (m *microcache) handleBackendResponse(
 		if !req.found {
 			// Store request options
 			req = buildRequestOpts(m, beres, r)
-			if !req.nocache {
-				m.Driver.SetRequestOpts(reqHash, req)
-				objHash = req.getObjectHash(reqHash, r)
-			}
+			m.Driver.SetRequestOpts(reqHash, req)
+			objHash = req.getObjectHash(reqHash, r)
 		}
 		// Cache response
 		if !req.nocache {
