@@ -10,6 +10,7 @@ type Monitor interface {
 	Log(Stats)
 	Hit()
 	Miss()
+	Stale()
 	Error()
 }
 

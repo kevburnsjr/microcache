@@ -153,6 +153,9 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		// Websocket passthrough
 		upgrade := strings.ToLower(r.Header.Get("connection")) == "upgrade"
 		if upgrade || m.Driver == nil {
+			if m.Monitor != nil {
+				m.Monitor.Miss()
+			}
 			h.ServeHTTP(w, r)
 			return
 		}
@@ -163,6 +166,9 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 
 		// Hard passthrough on non cacheable requests
 		if req.nocache {
+			if m.Monitor != nil {
+				m.Monitor.Miss()
+			}
 			h.ServeHTTP(w, r)
 			return
 		}
@@ -177,6 +183,9 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 
 		// Non-cacheable request method passthrough and purge
 		if r.Method != "GET" && r.Method != "HEAD" {
+			if m.Monitor != nil {
+				m.Monitor.Miss()
+			}
 			if obj.found {
 				// HTTP spec requires caches to purge cached responses following
 				//  successful unsafe request.
@@ -207,6 +216,9 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		if obj.found && req.staleWhileRevalidate > 0 &&
 			obj.expires.Add(req.staleWhileRevalidate).After(time.Now()) {
 			obj.sendResponse(w)
+			if m.Monitor != nil {
+				m.Monitor.Stale()
+			}
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
@@ -229,10 +241,11 @@ func (m *microcache) handleBackendResponse(
 	obj Response,
 	revalidating bool,
 ) {
+
 	// Backend Response
 	beres := Response{header: http.Header{}}
 
-	if req.collapsedForwarding && req.found && req.ttl > 0 {
+	if req.found && req.collapsedForwarding && req.ttl > 0 {
 		// collapsedForwarding not yet implemented
 	}
 
@@ -256,6 +269,9 @@ func (m *microcache) handleBackendResponse(
 			m.Monitor.Error()
 		}
 		if !revalidating && serveStale {
+			if m.Monitor != nil {
+				m.Monitor.Stale()
+			}
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
@@ -280,6 +296,9 @@ func (m *microcache) handleBackendResponse(
 	}
 
 	if !revalidating {
+		if m.Monitor != nil {
+			m.Monitor.Miss()
+		}
 		if m.Exposed {
 			w.Header().Set("microcache", "MISS")
 		}
