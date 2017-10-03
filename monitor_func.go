@@ -83,9 +83,3 @@ func (m *monitorFunc) Error() {
 	m.errors += 1
 	m.errorMutex.Unlock()
 }
-
-func (m *monitorFunc) Stop() {
-	m.errorMutex.Lock()
-	m.errors += 1
-	m.errorMutex.Unlock()
-}
