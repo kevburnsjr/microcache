@@ -8,7 +8,7 @@ become unavailable and it is not always feasible or economical to add a caching 
 between all services.
 
 To date, very few software packages exist to solve this specific problem. Most
-microcaching implementations make use of existing HTTP caching middleware. This presents
+microcache deployments make use of existing HTTP caching middleware. This presents
 a challenge. When an HTTP cache exists for the purpose of microcaching between an
 origin server and a CDN, the server must choose whether to use standard HTTP caching
 headers with aggressive short TTLs for the microcache or less aggressive longer TTL
@@ -18,8 +18,8 @@ cache layers from coexisting without some additional customization.
 All request specific custom headers supported by this cache are prefixed with
 ```microcache-``` and scrubbed from the response. Most of the common HTTP caching
 headers one would expect to see in an http cache are ignored (except Vary). This
-was intentional and may change depending on developer feedback. The purpose of this
-cache is not to act as a substitute for a robust HTTP caching layer but rather
+was intentional and support may change depending on developer feedback. The purpose of
+this cache is not to act as a substitute for a robust HTTP caching layer but rather
 to serve as an additional caching layer with separate controls for shorter lived,
 more aggressive caching measures.
 
@@ -28,7 +28,7 @@ suitable for all applications. Caching should certainly be disabled for any reso
 serving very large and/or streaming responses. For instance, caching is automatically
 disabled for all websocket requests.
 
-https://godoc.org/github.com/httpimp/microcache
+More info in the docs: https://godoc.org/github.com/httpimp/microcache
 
 ## Example
 
