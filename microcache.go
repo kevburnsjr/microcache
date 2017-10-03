@@ -138,7 +138,7 @@ func New(o Config) Microcache {
 		Exposed:              o.Exposed,
 	}
 	if o.Driver == nil {
-		m.Driver = NewGcacheDriver(1e4) // default 10k cache items
+		m.Driver = NewDriverGcache(1e4) // default 10k cache items
 	}
 	m.Start()
 	return &m
