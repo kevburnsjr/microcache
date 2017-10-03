@@ -204,9 +204,11 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
-			go m.handleBackendResponse(h, w, r, req, reqHash, objHash, obj, true)
+			go m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, true)
+			return
 		} else {
-			m.handleBackendResponse(h, w, r, req, reqHash, objHash, obj, false)
+			m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, false)
+			return
 		}
 	})
 }
@@ -215,11 +217,11 @@ func (m *microcache) handleBackendResponse(
 	h http.Handler,
 	w http.ResponseWriter,
 	r *http.Request,
-	req RequestOpts,
 	reqHash string,
+	req RequestOpts,
 	objHash string,
 	obj Response,
-	validatingStale bool,
+	revalidating bool,
 ) {
 	// Backend Response
 	beres := Response{header: http.Header{}}
@@ -246,13 +248,13 @@ func (m *microcache) handleBackendResponse(
 		if m.Monitor != nil {
 			m.Monitor.Error()
 		}
-		if !validatingStale {
+		if !revalidating && obj.expires.Add(req.staleIfError).After(time.Now()) {
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
 			obj.sendResponse(w)
+			return
 		}
-		return
 	}
 
 	if beres.status >= 200 && beres.status < 400 {
@@ -272,7 +274,7 @@ func (m *microcache) handleBackendResponse(
 		}
 	}
 
-	if !validatingStale {
+	if !revalidating {
 		if m.Exposed {
 			w.Header().Set("microcache", "MISS")
 		}
