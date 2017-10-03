@@ -1,51 +1,11 @@
 microcache is a non-standard HTTP microcache implemented as Go middleware.
 
-https://godoc.org/github.com/httpimp/microcache
-
 Useful for APIs serving large numbers of identical responses.
 Especially useful in high traffic read heavy APIs with low sensitivity to freshness.
 
-May improve service efficiency by reducing read traffic through
+https://godoc.org/github.com/httpimp/microcache
 
-* **ttl** - response caching with global or request specific ttl
-* **collapsed-forwarding** - deduplicate requests for cacheable resources
-
-May Improve client facing response time variability with
-
-* **stale-while-revalidate** - serve stale content while fetching cacheable resources in the background
-
-May improve service availability with support for
-
-* **request-timeout** - kill long running requests
-* **stale-if-error** - serve stale responses on error (or request timeout)
-* **stale-recache** - recache stale responses following stale-if-error
-
-Supports content negotiation with global and request specific cache splintering
-
-* **vary** - splinter responses by request header value
-* **vary-query** - splinter responses by URL query parameter value
-
-Helps maintain cache consistency with
-
-* **ttl-sync** - synchronize response expiration times across a load balanced cluster
-
-The above mentioned availability gains are especially relevant in microservices where
-synchronous dependencies sometimes become unavailable and it isn't always feasible or
-economical to add a caching layer between services (hence the name)
-
-All request specific custom headers supported by the cache are prefixed with
-```microcache-``` and scrubbed from the response. Most of the common HTTP caching
-headers you would expect to see in an http cache are ignored (except Vary). This
-was intentional and may change depending on developer feedback. The purpose of this
-cache is not to act as a substitute for a robust HTTP caching layer but rather
-to serve as an additional caching layer with separate controls.
-
-The manner in which this cache operates (writing responses to byte buffers) may not be
-suitable for all applications. Caching should certainly be disabled for any resources
-serving very large and/or streaming responses. For instance, the cache is automatically
-disabled for all websocket requests.
-
-## Example usage
+## Example
 
 ```go
 package main
@@ -171,6 +131,48 @@ func main() {
 	http.ListenAndServe(":80", h)
 }
 ```
+
+## Possible Benefits
+
+May improve service efficiency by reducing read traffic through
+
+* **ttl** - response caching with global or request specific ttl
+* **collapsed-forwarding** - deduplicate requests for cacheable resources
+
+May Improve client facing response time variability with
+
+* **stale-while-revalidate** - serve stale content while fetching cacheable resources in the background
+
+May improve service availability with support for
+
+* **request-timeout** - kill long running requests
+* **stale-if-error** - serve stale responses on error (or request timeout)
+* **stale-recache** - recache stale responses following stale-if-error
+
+Supports content negotiation with global and request specific cache splintering
+
+* **vary** - splinter responses by request header value
+* **vary-query** - splinter responses by URL query parameter value
+
+Helps maintain cache consistency with
+
+* **ttl-sync** - synchronize response expiration times across a load balanced cluster
+
+The above mentioned availability gains are especially relevant in microservices where
+synchronous dependencies sometimes become unavailable and it isn't always feasible or
+economical to add a caching layer between services (hence the name)
+
+All request specific custom headers supported by the cache are prefixed with
+```microcache-``` and scrubbed from the response. Most of the common HTTP caching
+headers you would expect to see in an http cache are ignored (except Vary). This
+was intentional and may change depending on developer feedback. The purpose of this
+cache is not to act as a substitute for a robust HTTP caching layer but rather
+to serve as an additional caching layer with separate controls.
+
+The manner in which this cache operates (writing responses to byte buffers) may not be
+suitable for all applications. Caching should certainly be disabled for any resources
+serving very large and/or streaming responses. For instance, the cache is automatically
+disabled for all websocket requests.
 
 ## Release
 
