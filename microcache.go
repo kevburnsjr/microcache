@@ -252,6 +252,9 @@ func (m *microcache) handleBackendResponse(
 
 	if req.found && req.collapsedForwarding && req.ttl > 0 {
 		// collapsedForwarding not yet implemented
+		// probably requires a threadsafe map[reqHash]sync.Mutex
+		// may need to extract more logic from Middleware func
+		// would rather implement this after testing is in place
 	}
 
 	// Execute request

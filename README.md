@@ -114,10 +114,13 @@ Test time:                              10 sec
 ## Notes
 
 ```
+Move DriverGcache to microcache/driver package
+
 Separate middleware:
   Sanitize lang header? (first language)
   Sanitize region? (country code)
 
+gzip cache entries?
 etag support?
 if-modified-since support?
 HTCP?
