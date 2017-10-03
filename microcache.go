@@ -176,7 +176,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		}
 
 		// Non-cacheable request method passthrough and purge
-		if r.Method != "GET" {
+		if r.Method != "GET" && r.Method != "HEAD" {
 			if obj.found {
 				// HTTP spec requires caches to purge cached responses following
 				//  successful unsafe request.
