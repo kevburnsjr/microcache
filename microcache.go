@@ -9,10 +9,11 @@ import (
 
 type microcache struct {
 	Nocache              bool
+	Timeout              time.Duration
 	TTL                  time.Duration
 	StaleIfError         time.Duration
+	StaleRecache         bool
 	StaleWhileRevalidate time.Duration
-	Timeout              time.Duration
 	TTLSync              bool
 	HashQuery            bool
 	CollapsedForwarding  bool
@@ -42,6 +43,11 @@ type Config struct {
 	// Default: 0
 	StaleIfError time.Duration
 
+	// StaleRecache specifies whether to re-cache the response object for ttl while serving
+	// stale response on backend error
+	// Recommended: true
+	// Default: false
+	StaleRecache bool
 	// StaleWhileRevalidate specifies a period during which a stale response may be
 	// served immediately while the resource is fetched in the background. This can be
 	// useful for ensuring consistent response times at the cost of content freshness.
@@ -111,6 +117,7 @@ func New(o Config) microcache {
 		Nocache:              o.Nocache,
 		TTL:                  o.TTL,
 		StaleIfError:         o.StaleIfError,
+		StaleRecache:         o.StaleRecache,
 		StaleWhileRevalidate: o.StaleWhileRevalidate,
 		TTLSync:              o.TTLSync,
 		Timeout:              o.Timeout,
@@ -228,8 +235,8 @@ func (m *microcache) handleBackendResponse(
 	// Serve Stale
 	if beres.status >= 500 && obj.found {
 		// Extend stale response expiration by staleIfError grace period
-		if req.found && req.staleIfError > 0 {
-			obj.setExpires(req.staleIfError, req.ttlSync)
+		if req.found && req.staleRecache {
+			obj.setExpires(req.ttl, req.ttlSync)
 			m.Driver.Set(objHash, obj)
 		}
 		if m.Monitor != nil {

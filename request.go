@@ -25,8 +25,9 @@ type RequestOpts struct {
 	found                bool
 	ttl                  time.Duration
 	staleIfError         time.Duration
+	staleRecache         bool
 	staleWhileRevalidate time.Duration
-	collapsedForwarding   bool
+	collapsedForwarding  bool
 	ttlSync              bool
 	vary                 []string
 	varyQuery            []string
@@ -58,6 +59,7 @@ func buildRequestOpts(m *microcache, res Response, r *http.Request) RequestOpts 
 		nocache:              m.Nocache,
 		ttl:                  m.TTL,
 		staleIfError:         m.StaleIfError,
+		staleRecache:         m.StaleRecache,
 		staleWhileRevalidate: m.StaleWhileRevalidate,
 		collapsedForwarding:  m.CollapsedForwarding,
 		ttlSync:              m.TTLSync,
@@ -110,6 +112,16 @@ func buildRequestOpts(m *microcache, res Response, r *http.Request) RequestOpts 
 	// w.Header().Set("microcache-no-collapsed-fowarding", "1")
 	if headers.Get("microcache-no-collapsed-fowarding") != "" {
 		req.collapsedForwarding = false
+	}
+
+	// w.Header().Set("microcache-stale-recache", "1")
+	if headers.Get("microcache-stale-recache") != "" {
+		req.staleRecache = true
+	}
+
+	// w.Header().Set("microcache-no-stale-recache", "1")
+	if headers.Get("microcache-no-stale-recache") != "" {
+		req.staleRecache = false
 	}
 
 	// w.Header().Add("microcache-vary-query", "q, page, limit")
