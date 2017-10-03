@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+type Microcache interface {
+	Middleware(http.Handler) http.Handler
+	Start()
+	Stop()
+}
+
 type microcache struct {
 	Nocache              bool
 	Timeout              time.Duration
@@ -114,7 +120,7 @@ type Config struct {
 }
 
 // New creates and returns a configured microcache instance
-func New(o Config) microcache {
+func New(o Config) Microcache {
 	// Defaults
 	m := microcache{
 		Nocache:              o.Nocache,
@@ -135,7 +141,7 @@ func New(o Config) microcache {
 		m.Driver = NewGcacheDriver(1e4) // default 10k cache items
 	}
 	m.Start()
-	return m
+	return &m
 }
 
 // Middleware can be used to wrap an HTTP handler with microcache functionality.
@@ -241,7 +247,6 @@ func (m *microcache) handleBackendResponse(
 	obj Response,
 	revalidating bool,
 ) {
-
 	// Backend Response
 	beres := Response{header: http.Header{}}
 
