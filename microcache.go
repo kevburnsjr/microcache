@@ -21,6 +21,8 @@ type microcache struct {
 	Driver               Driver
 	Monitor              Monitor
 	Exposed              bool
+
+	stopMonitor chan bool
 }
 
 type Config struct {
@@ -131,6 +133,7 @@ func New(o Config) microcache {
 	if o.Driver == nil {
 		m.Driver = NewGcacheDriver(1e4) // default 10k cache items
 	}
+	m.Start()
 	return m
 }
 
@@ -273,5 +276,30 @@ func (m *microcache) handleBackendResponse(
 			w.Header().Set("microcache", "MISS")
 		}
 		beres.sendResponse(w)
+		return
 	}
+}
+
+// Start starts the monitor and any other required background processes
+func (m *microcache) Start() {
+	m.stopMonitor = make(chan bool)
+	if m.Monitor != nil {
+		go func() {
+			for {
+				select {
+				case <-time.After(m.Monitor.GetInterval()):
+					m.Monitor.Log(Stats{
+						Size: m.Driver.GetSize(),
+					})
+				case <-m.stopMonitor:
+					return
+				}
+			}
+		}()
+	}
+}
+
+// Stop stops the monitor and any other required background processes
+func (m *microcache) Stop() {
+	m.stopMonitor <- true
 }

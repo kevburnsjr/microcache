@@ -66,3 +66,7 @@ func (c GcacheDriver) Remove(hash string) error {
 	}
 	return nil
 }
+
+func (c GcacheDriver) GetSize() int {
+	return c.ResponseCache.Len()
+}

@@ -7,15 +7,16 @@ import (
 // Monitor is an interface for collecting metrics about the microcache
 type Monitor interface {
 	GetInterval() time.Duration
-	Log(MonitorStats)
-	Start()
+	Log(Stats)
 	Hit()
 	Miss()
 	Error()
 }
 
-type MonitorStats struct {
-	Size int
-	HitRate float64
-	ErrorRate float64
+type Stats struct {
+	Size   int
+	Hits   int
+	Misses int
+	Stales int
+	Errors int
 }
