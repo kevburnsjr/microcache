@@ -1,7 +1,32 @@
 microcache is a non-standard HTTP microcache implemented as Go middleware.
 
-Useful for APIs serving large numbers of identical responses.
-Especially useful in high traffic read heavy APIs with low sensitivity to freshness.
+HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
+is a proven strategy for improving the efficiency, availability, consistency and
+response time variability of HTTP web services. These benefits are especially relevant
+in microservice architectures where a service's synchronous dependencies sometimes
+become unavailable and it is not always feasible or economical to add a caching layer
+between all services.
+
+To date, very few software packages exist to solve this specific problem. Most
+microcaching implementations make use of existing HTTP caching middleware. This presents
+a challenge. When an HTTP cache exists for the purpose of microcaching between an
+origin server and a CDN, the server must choose whether to use standard HTTP caching
+headers with aggressive short TTLs for the microcache or less aggressive longer TTL
+headers more suitable to CDNs. The overlap in HTTP header key space prevents these two
+cache layers from coexisting without some additional customization.
+
+All request specific custom headers supported by this cache are prefixed with
+```microcache-``` and scrubbed from the response. Most of the common HTTP caching
+headers one would expect to see in an http cache are ignored (except Vary). This
+was intentional and may change depending on developer feedback. The purpose of this
+cache is not to act as a substitute for a robust HTTP caching layer but rather
+to serve as an additional caching layer with separate controls for shorter lived,
+more aggressive caching measures.
+
+The manner in which this cache operates (writing responses to byte buffers) may not be
+suitable for all applications. Caching should certainly be disabled for any resources
+serving very large and/or streaming responses. For instance, caching is automatically
+disabled for all websocket requests.
 
 https://godoc.org/github.com/httpimp/microcache
 
@@ -132,55 +157,39 @@ func main() {
 }
 ```
 
-## Possible Benefits
+## Benefits
 
-May improve service efficiency by reducing read traffic through
+May improve service efficiency by reducing origin read traffic
 
 * **ttl** - response caching with global or request specific ttl
 * **collapsed-forwarding** - deduplicate requests for cacheable resources
 
-May Improve client facing response time variability with
+May improve client facing response time variability
 
 * **stale-while-revalidate** - serve stale content while fetching cacheable resources in the background
 
-May improve service availability with support for
+May improve service availability
 
 * **request-timeout** - kill long running requests
 * **stale-if-error** - serve stale responses on error (or request timeout)
 * **stale-recache** - recache stale responses following stale-if-error
+
+May improve cache consistency
+
+* **ttl-sync** - synchronize response expiration times
 
 Supports content negotiation with global and request specific cache splintering
 
 * **vary** - splinter responses by request header value
 * **vary-query** - splinter responses by URL query parameter value
 
-Helps maintain cache consistency with
-
-* **ttl-sync** - synchronize response expiration times across a load balanced cluster
-
-The above mentioned availability gains are especially relevant in microservices where
-synchronous dependencies sometimes become unavailable and it isn't always feasible or
-economical to add a caching layer between services (hence the name)
-
-All request specific custom headers supported by the cache are prefixed with
-```microcache-``` and scrubbed from the response. Most of the common HTTP caching
-headers you would expect to see in an http cache are ignored (except Vary). This
-was intentional and may change depending on developer feedback. The purpose of this
-cache is not to act as a substitute for a robust HTTP caching layer but rather
-to serve as an additional caching layer with separate controls.
-
-The manner in which this cache operates (writing responses to byte buffers) may not be
-suitable for all applications. Caching should certainly be disabled for any resources
-serving very large and/or streaming responses. For instance, the cache is automatically
-disabled for all websocket requests.
-
 ## Release
 
 Tests have not yet been written to confirm the correct behavior of this cache.
 
-While I am fairly certain that all logic pertaining to the various caching mechanisms
-behaves correctly, I would feel a lot more comfortable having 100% test coverage before
-recommending this library for use in production.
+While it is fairly certain that all logic pertaining to the various caching mechanisms
+that this cache supports is operating correctly, 100% test coverage should be completed
+before this library can be recommended for use in production.
 
 ## Benchmarks
 
@@ -205,6 +214,8 @@ Test time:                              10 sec
 
 ```
 Move DriverGcache to microcache/driver package
+
+Vary query by parameter presence as well as value
 
 Modify Monitor.Error to accept request, response and error
 Add Monitor.Timeout accepting request, response and error
