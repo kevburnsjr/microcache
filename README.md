@@ -1,17 +1,17 @@
 microcache is an HTTP cache implemented as Go middleware.
 
-Useful for APIs which serve large numbers of identical responses.
+Useful for APIs serving large numbers of identical responses.
 Especially useful in high traffic read heavy APIs with common responses
 and low sensitivity to freshness.
 
-May improve efficiency by reducing read traffic through
+May improve service efficiency by reducing read traffic through
 
 * **ttl** - response caching with global or request specific ttl
 * **collapsed-forwarding** - deduplicate requests for cacheable resources
 
 May Improve client facing response time variability with
 
-* **stale-while-revalidate** - serve stale content while fetching cacheable resources
+* **stale-while-revalidate** - serve stale content while fetching cacheable resources in the background
 
 May improve service availability with support for
 
@@ -25,7 +25,7 @@ Supports content negotiation with global and request specific cache splintering
 
 Helps maintain cache consistency with
 
-* **ttl-sync** - synchronize TTLs across a load balanced cluster
+* **ttl-sync** - synchronize response expiration times across a load balanced cluster
 
 The above mentioned availability gains are especially relevant in microservices where
 synchronous dependencies sometimes become unavailable and it isn't always feasible or
@@ -122,6 +122,6 @@ etag support?
 if-modified-since support?
 HTCP?
 TCI?
-Special rule functions?
-  Passthrough: func(req) bool
+Custom rule handling?
+  Passthrough: func(r) bool
 ```

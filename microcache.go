@@ -30,11 +30,26 @@ type Config struct {
 	// Can be overridden by the microcache-cache and microcache-nocache response headers
 	Nocache bool
 
+	// Timeout specifies the maximum execution time for backend responses
+	// Example: If the underlying handler takes more than 10s to respond,
+	// the request is cancelled and the response is treated as 503
+	// Recommended: 10s
+	// Default: 0
+	Timeout time.Duration
+
 	// TTL specifies a default ttl for cached responses
 	// Can be overridden by the microcache-ttl response header
 	// Recommended: 10s
 	// Default: 0
 	TTL time.Duration
+
+	// StaleWhileRevalidate specifies a period during which a stale response may be
+	// served immediately while the resource is fetched in the background. This can be
+	// useful for ensuring consistent response times at the cost of content freshness.
+	// More Info: https://tools.ietf.org/html/rfc5861
+	// Recommended: 20s
+	// Default: 0
+	StaleWhileRevalidate time.Duration
 
 	// StaleIfError specifies a default stale grace period
 	// If a request fails and StaleIfError is set, the object will be served as stale
@@ -50,13 +65,6 @@ type Config struct {
 	// Recommended: true
 	// Default: false
 	StaleRecache bool
-	// StaleWhileRevalidate specifies a period during which a stale response may be
-	// served immediately while the resource is fetched in the background. This can be
-	// useful for ensuring consistent response times at the cost of content freshness.
-	// More Info: https://tools.ietf.org/html/rfc5861
-	// Recommended: 20s
-	// Default: 0
-	StaleWhileRevalidate time.Duration
 
 	// StaleWhileRevalidate specifies a period during which a stale response may be
 	// served immediately while the resource is fetched in the background. This can be
@@ -75,13 +83,6 @@ type Config struct {
 	// Can be overridden by the microcache-ttl-sync response header
 	// Default: false
 	TTLSync bool
-
-	// Timeout specifies the maximum execution time for backend responses
-	// Example: If the underlying handler takes more than 10s to respond,
-	// the request is cancelled and the response is treated as 503
-	// Recommended: 10s
-	// Default: 0
-	Timeout time.Duration
 
 	// HashQuery determines whether all query parameters in the request URI
 	// should be hashed to differentiate requests
@@ -140,12 +141,12 @@ func New(o Config) microcache {
 // Middleware can be used to wrap an HTTP handler with microcache functionality.
 // It can also be passed to http middleware providers like alice as a constructor.
 //
-//   mx := microcache.New(microcache.Config{TTL: 10 * time.Second})
-//   newHandler := mx.Middleware(yourHandler)
+//     mx := microcache.New(microcache.Config{TTL: 10 * time.Second})
+//     newHandler := mx.Middleware(yourHandler)
 //
 // Or with alice
 //
-//  chain.Append(mx.Middleware)
+//    chain.Append(mx.Middleware)
 //
 func (m *microcache) Middleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -224,7 +225,7 @@ func (m *microcache) handleBackendResponse(
 	beres := Response{header: http.Header{}}
 
 	if req.collapsedForwarding && req.found && req.ttl > 0 {
-		// forward collapse
+		// collapsedForwarding not yet implemented
 	}
 
 	// Execute request
