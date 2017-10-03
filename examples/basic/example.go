@@ -45,7 +45,7 @@ func logStats(stats microcache.Stats) {
 func main() {
 	// - Nocache: true
 	// Cache is disabled for all requests by default
-	// Cache can be enabled per endpoint with response header
+	// Cache can be enabled per request with response header
 	//
 	//     microcache-cache: 1
 	//
@@ -61,7 +61,7 @@ func main() {
 	// - StaleIfError: 600 * time.Second
 	// If the request encounters an error (or times out), a stale response will be returned
 	// provided that the stale cached response expired less than 10 minutes ago.
-	// Can be altered per endpoint with response header
+	// Can be altered per request with response header
 	// More Info: https://tools.ietf.org/html/rfc5861
 	//
 	//     microcache-stale-if-error: 86400
@@ -69,7 +69,7 @@ func main() {
 	// - StaleRecache: true
 	// Upon serving a stale response following an error, that stale response will be
 	// re-cached for the default ttl (10s)
-	// Can be disabled per endpoint with response header
+	// Can be disabled per request with response header
 	//
 	//     microcache-no-stale-recache: 1
 	//
@@ -84,7 +84,7 @@ func main() {
 	// - TTLSync: true
 	// Cache expiration times will be synced to the system clock to avoid inconsistency
 	// between caches. In effect, all expiration times will fall on a multiple of 10s
-	// Can be disabled per endpoint with response header
+	// Can be disabled per request with response header
 	//
 	//     microcache-ttl-nosync: 1
 	//
