@@ -1,8 +1,9 @@
-microcache is an HTTP cache implemented as Go middleware.
+microcache is a non-standard HTTP microcache implemented as Go middleware.
+
+https://godoc.org/github.com/httpimp/microcache
 
 Useful for APIs serving large numbers of identical responses.
-Especially useful in high traffic read heavy APIs with common responses
-and low sensitivity to freshness.
+Especially useful in high traffic read heavy APIs with low sensitivity to freshness.
 
 May improve service efficiency by reducing read traffic through
 
@@ -17,6 +18,7 @@ May improve service availability with support for
 
 * **request-timeout** - kill long running requests
 * **stale-if-error** - serve stale responses on error (or request timeout)
+* **stale-recache** - recache stale responses following stale-if-error
 
 Supports content negotiation with global and request specific cache splintering
 
@@ -42,10 +44,6 @@ The manner in which this cache operates (writing responses to byte buffers) may 
 suitable for all applications. Caching should certainly be disabled for any resources
 serving very large and/or streaming responses. For instance, the cache is automatically
 disabled for all websocket requests.
-
-## Docs
-
-https://godoc.org/github.com/httpimp/microcache
 
 ## Example usage
 
@@ -205,6 +203,9 @@ Test time:                              10 sec
 
 ```
 Move DriverGcache to microcache/driver package
+
+Modify Monitor.Error to accept request, response and error
+Add Monitor.Timeout accepting request, response and error
 
 Separate middleware:
   Sanitize lang header? (first language)

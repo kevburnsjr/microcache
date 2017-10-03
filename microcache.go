@@ -1,4 +1,4 @@
-// microcache is an HTTP cache implemented as Go middleware.
+// microcache is a non-standard HTTP microcache implemented as Go middleware.
 package microcache
 
 import (
