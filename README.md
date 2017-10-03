@@ -1,4 +1,4 @@
-microcache is a non-standard HTTP microcache implemented as Go middleware.
+**microcache** is a non-standard HTTP microcache implemented as Go middleware.
 
 HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
 is a proven strategy for improving the efficiency, availability, consistency and
