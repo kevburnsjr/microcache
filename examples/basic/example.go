@@ -81,13 +81,6 @@ func main() {
 	//
 	//     microcache-stale-while-revalidate: 20
 	//
-	// - TTLSync: true
-	// Cache expiration times will be synced to the system clock to avoid inconsistency
-	// between caches. In effect, all expiration times will fall on a multiple of 10s
-	// Can be disabled per request with response header
-	//
-	//     microcache-ttl-nosync: 1
-	//
 	// - HashQuery: false
 	// Query parameters are not hashed by default
 	// Responses can be splintered by query parameter with response header
@@ -109,7 +102,6 @@ func main() {
 		StaleIfError:         600 * time.Second,
 		StaleRecache:         true,
 		StaleWhileRevalidate: 20 * time.Second,
-		TTLSync:              true,
 		HashQuery:            false,
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),

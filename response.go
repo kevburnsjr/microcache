@@ -43,17 +43,6 @@ func (res *Response) sendResponse(w http.ResponseWriter) {
 	w.Write(res.body)
 	return
 }
-func (res *Response) setExpires(ttl time.Duration, sync bool) {
-	if sync {
-		now := time.Now()
-		res.expires = now.Round(ttl).Add(ttl)
-		if res.expires.After(now.Add(ttl)) {
-			res.expires = res.expires.Add(-1 * ttl)
-		}
-	} else {
-		res.expires = time.Now().Add(ttl)
-	}
-}
 
 type passthroughWriter struct {
 	http.ResponseWriter

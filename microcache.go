@@ -20,7 +20,6 @@ type microcache struct {
 	StaleIfError         time.Duration
 	StaleRecache         bool
 	StaleWhileRevalidate time.Duration
-	TTLSync              bool
 	HashQuery            bool
 	CollapsedForwarding  bool
 	Vary                 []string
@@ -79,17 +78,6 @@ type Config struct {
 	// Default: 0
 	CollapsedFowarding bool
 
-	// TTLSync will lock TTLs to the system clock to improve consistency between caches.
-	// This can help prevent parallel caches from expiring response objects at different times.
-	// This assumes that the parallel caches in question have synchronised clocks (see ntpd)
-	// This will cause response expiration to vary between now and now + ttl due to rounding.
-	// A 10s TTL applied at 09:12:43 will set expires to 09:12:50 rather than 09:12:53 (7s).
-	// A 10s TTL applied at 09:12:49 will set expires to 09:12:50 rather than 09:12:59 (1s).
-	// This should only be set where consistency is more important than efficiency.
-	// Can be overridden by the microcache-ttl-sync response header
-	// Default: false
-	TTLSync bool
-
 	// HashQuery determines whether all query parameters in the request URI
 	// should be hashed to differentiate requests
 	// Default: false
@@ -128,7 +116,6 @@ func New(o Config) Microcache {
 		StaleIfError:         o.StaleIfError,
 		StaleRecache:         o.StaleRecache,
 		StaleWhileRevalidate: o.StaleWhileRevalidate,
-		TTLSync:              o.TTLSync,
 		Timeout:              o.Timeout,
 		HashQuery:            o.HashQuery,
 		CollapsedForwarding:  true,
@@ -270,7 +257,7 @@ func (m *microcache) handleBackendResponse(
 		serveStale := obj.expires.Add(req.staleIfError).After(time.Now())
 		// Extend stale response expiration by staleIfError grace period
 		if req.found && serveStale && req.staleRecache {
-			obj.setExpires(req.ttl, req.ttlSync)
+			obj.expires = time.Now().Add(req.ttl)
 			m.Driver.Set(objHash, obj)
 		}
 		if m.Monitor != nil {
@@ -298,7 +285,7 @@ func (m *microcache) handleBackendResponse(
 		// Cache response
 		if !req.nocache {
 			beres.found = true
-			beres.setExpires(req.ttl, req.ttlSync)
+			beres.expires = time.Now().Add(req.ttl)
 			m.Driver.Set(objHash, beres)
 		}
 	}

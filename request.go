@@ -28,7 +28,6 @@ type RequestOpts struct {
 	staleRecache         bool
 	staleWhileRevalidate time.Duration
 	collapsedForwarding  bool
-	ttlSync              bool
 	vary                 []string
 	varyQuery            []string
 	nocache              bool
@@ -62,7 +61,6 @@ func buildRequestOpts(m *microcache, res Response, r *http.Request) RequestOpts 
 		staleRecache:         m.StaleRecache,
 		staleWhileRevalidate: m.StaleWhileRevalidate,
 		collapsedForwarding:  m.CollapsedForwarding,
-		ttlSync:              m.TTLSync,
 		vary:                 m.Vary,
 	}
 
@@ -92,16 +90,6 @@ func buildRequestOpts(m *microcache, res Response, r *http.Request) RequestOpts 
 	staleWhileRevalidateHdr, _ := strconv.Atoi(headers.Get("microcache-stale-while-revalidate"))
 	if staleWhileRevalidateHdr > 0 {
 		req.staleWhileRevalidate = time.Duration(staleWhileRevalidateHdr) * time.Second
-	}
-
-	// w.Header().Set("microcache-ttl-sync", "1")
-	if headers.Get("microcache-ttl-sync") != "" {
-		req.ttlSync = true
-	}
-
-	// w.Header().Set("microcache-ttl-nosync", "1")
-	if headers.Get("microcache-ttl-nosync") != "" {
-		req.ttlSync = false
 	}
 
 	// w.Header().Set("microcache-collapsed-fowarding", "1")
