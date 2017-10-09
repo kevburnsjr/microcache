@@ -132,7 +132,7 @@ func New(o Config) Microcache {
 		collapseMutex:        &sync.Mutex{},
 	}
 	if o.Driver == nil {
-		m.Driver = NewDriverGcache(1e4) // default 10k cache items
+		m.Driver = NewDriverLRU(1e4) // default 10k cache items
 	}
 	m.Start()
 	return &m
