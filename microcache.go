@@ -4,6 +4,7 @@ package microcache
 import (
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,7 +28,11 @@ type microcache struct {
 	Monitor              Monitor
 	Exposed              bool
 
-	stopMonitor chan bool
+	stopMonitor     chan bool
+	revalidating    map[string]bool
+	revalidateMutex *sync.Mutex
+	collapse        map[string]*sync.Mutex
+	collapseMutex   *sync.Mutex
 }
 
 type Config struct {
@@ -71,12 +76,10 @@ type Config struct {
 	// Default: false
 	StaleRecache bool
 
-	// StaleWhileRevalidate specifies a period during which a stale response may be
-	// served immediately while the resource is fetched in the background. This can be
-	// useful for ensuring consistent response times at the cost of content freshness.
-	// Recommended: 20s
-	// Default: 0
-	CollapsedFowarding bool
+	// CollapsedForwarding specifies whether to collapse duplicate requests
+	// This helps prevent servers with a cold cache from hammering the backend
+	// Default: false
+	CollapsedForwarding bool
 
 	// HashQuery determines whether all query parameters in the request URI
 	// should be hashed to differentiate requests
@@ -118,11 +121,15 @@ func New(o Config) Microcache {
 		StaleWhileRevalidate: o.StaleWhileRevalidate,
 		Timeout:              o.Timeout,
 		HashQuery:            o.HashQuery,
-		CollapsedForwarding:  true,
+		CollapsedForwarding:  o.CollapsedForwarding,
 		Vary:                 o.Vary,
 		Driver:               o.Driver,
 		Monitor:              o.Monitor,
 		Exposed:              o.Exposed,
+		revalidating:         map[string]bool{},
+		revalidateMutex:      &sync.Mutex{},
+		collapse:             map[string]*sync.Mutex{},
+		collapseMutex:        &sync.Mutex{},
 	}
 	if o.Driver == nil {
 		m.Driver = NewDriverGcache(1e4) // default 10k cache items
@@ -166,6 +173,30 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			return
 		}
 
+		// CollapsedForwarding
+		// This implementation may collapse too many uncacheable requests.
+		// Refactor may be complicated.
+		if m.CollapsedForwarding {
+			m.collapseMutex.Lock()
+			mutex, ok := m.collapse[reqHash]
+			if !ok {
+				mutex = &sync.Mutex{}
+				m.collapse[reqHash] = mutex
+			}
+			m.collapseMutex.Unlock()
+			// Mutex serializes collapsible requests
+			mutex.Lock()
+			defer func() {
+				mutex.Unlock()
+				m.collapseMutex.Lock()
+				delete(m.collapse, reqHash)
+				m.collapseMutex.Unlock()
+			}()
+			if !req.found {
+				req = m.Driver.GetRequestOpts(reqHash)
+			}
+		}
+
 		// Fetch cached response object
 		var objHash string
 		var obj Response
@@ -181,7 +212,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			}
 			if obj.found {
 				// HTTP spec requires caches to purge cached responses following
-				//  successful unsafe request.
+				// successful unsafe request
 				ptw := passthroughWriter{w, 0}
 				h.ServeHTTP(ptw, r)
 				if ptw.status >= 200 && ptw.status < 400 {
@@ -208,13 +239,13 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		// Stale While Revalidate
 		if obj.found && req.staleWhileRevalidate > 0 &&
 			obj.expires.Add(req.staleWhileRevalidate).After(time.Now()) {
-			obj.sendResponse(w)
 			if m.Monitor != nil {
 				m.Monitor.Stale()
 			}
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
+			obj.sendResponse(w)
 			go m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, true)
 			return
 		} else {
@@ -232,16 +263,24 @@ func (m *microcache) handleBackendResponse(
 	req RequestOpts,
 	objHash string,
 	obj Response,
-	revalidating bool,
+	revalidate bool,
 ) {
+	// Dedupe revalidation
+	if revalidate {
+		m.revalidateMutex.Lock()
+		_, revalidating := m.revalidating[objHash]
+		if !revalidating {
+			m.revalidating[objHash] = true
+		}
+		m.revalidateMutex.Unlock()
+		if revalidating {
+			return
+		}
+	}
+
 	// Backend Response
 	beres := Response{header: http.Header{}}
 
-	if req.found && req.collapsedForwarding && req.ttl > 0 {
-		// collapsedForwarding not yet implemented
-		// probably requires a threadsafe map[reqHash]sync.Mutex
-		// may need to extract more logic from Middleware func
-		// would rather implement this after testing is in place
 	}
 
 	// Execute request
@@ -263,7 +302,7 @@ func (m *microcache) handleBackendResponse(
 		if m.Monitor != nil {
 			m.Monitor.Error()
 		}
-		if !revalidating && serveStale {
+		if !revalidate && serveStale {
 			if m.Monitor != nil {
 				m.Monitor.Stale()
 			}
@@ -275,6 +314,7 @@ func (m *microcache) handleBackendResponse(
 		}
 	}
 
+	// Backend Request succeeded
 	if beres.status >= 200 && beres.status < 400 {
 		if !req.found {
 			// Store request options
@@ -290,7 +330,8 @@ func (m *microcache) handleBackendResponse(
 		}
 	}
 
-	if !revalidating {
+	// Don't render response during background revalidate
+	if !revalidate {
 		if m.Monitor != nil {
 			m.Monitor.Miss()
 		}
@@ -300,6 +341,11 @@ func (m *microcache) handleBackendResponse(
 		beres.sendResponse(w)
 		return
 	}
+
+	// Clear revalidation lock
+	m.revalidateMutex.Lock()
+	delete(m.revalidating, objHash)
+	m.revalidateMutex.Unlock()
 }
 
 // Start starts the monitor and any other required background processes

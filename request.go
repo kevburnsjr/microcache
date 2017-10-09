@@ -1,6 +1,9 @@
 package microcache
 
 import (
+	"crypto/sha1"
+	"encoding/base64"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,7 +18,9 @@ func getRequestHash(m *microcache, r *http.Request) string {
 	for _, header := range m.Vary {
 		reqHash = reqHash + header + r.Header.Get(header)
 	}
-	return reqHash
+	h := sha1.New()
+	io.WriteString(h, reqHash)
+	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
 
 // RequestOpts stores per-request cache options. This is necessary to allow
