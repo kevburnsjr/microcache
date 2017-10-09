@@ -281,6 +281,8 @@ func (m *microcache) handleBackendResponse(
 	// Backend Response
 	beres := Response{header: http.Header{}}
 
+	if m.Monitor != nil {
+		m.Monitor.Backend()
 	}
 
 	// Execute request

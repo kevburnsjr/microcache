@@ -14,17 +14,19 @@ func MonitorFunc(interval time.Duration, logFunc func(Stats)) Monitor {
 }
 
 type monitorFunc struct {
-	interval   time.Duration
-	logFunc    func(Stats)
-	hits       int
-	hitMutex   sync.Mutex
-	misses     int
-	missMutex  sync.Mutex
-	stales     int
-	staleMutex sync.Mutex
-	errors     int
-	errorMutex sync.Mutex
-	stop       chan bool
+	interval     time.Duration
+	logFunc      func(Stats)
+	hits         int
+	hitMutex     sync.Mutex
+	misses       int
+	missMutex    sync.Mutex
+	stales       int
+	staleMutex   sync.Mutex
+	backend      int
+	backendMutex sync.Mutex
+	errors       int
+	errorMutex   sync.Mutex
+	stop         chan bool
 }
 
 func (m *monitorFunc) GetInterval() time.Duration {
@@ -49,6 +51,12 @@ func (m *monitorFunc) Log(stats Stats) {
 	stats.Stales = m.stales
 	m.stales = 0
 	m.staleMutex.Unlock()
+
+	// backend
+	m.backendMutex.Lock()
+	stats.Backend = m.backend
+	m.backend = 0
+	m.backendMutex.Unlock()
 
 	// errors
 	m.errorMutex.Lock()
@@ -76,6 +84,12 @@ func (m *monitorFunc) Stale() {
 	m.staleMutex.Lock()
 	m.stales += 1
 	m.staleMutex.Unlock()
+}
+
+func (m *monitorFunc) Backend() {
+	m.backendMutex.Lock()
+	m.backend += 1
+	m.backendMutex.Unlock()
 }
 
 func (m *monitorFunc) Error() {

@@ -11,13 +11,15 @@ type Monitor interface {
 	Hit()
 	Miss()
 	Stale()
+	Backend()
 	Error()
 }
 
 type Stats struct {
-	Size   int
-	Hits   int
-	Misses int
-	Stales int
-	Errors int
+	Size    int
+	Hits    int
+	Misses  int
+	Stales  int
+	Backend int
+	Errors  int
 }

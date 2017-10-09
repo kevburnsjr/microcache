@@ -32,12 +32,13 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func logStats(stats microcache.Stats) {
 	total := stats.Hits + stats.Misses + stats.Stales
-	log.Printf("Size: %d, Total: %d, Hits: %d, Misses: %d, Stales: %d, Errors: %d\n",
+	log.Printf("Size: %d, Total: %d, Hits: %d, Misses: %d, Stales: %d, Backend: %d, Errors: %d\n",
 		stats.Size,
 		total,
 		stats.Hits,
 		stats.Misses,
 		stats.Stales,
+		stats.Backend,
 		stats.Errors,
 	)
 }
