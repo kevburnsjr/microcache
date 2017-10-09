@@ -4,8 +4,8 @@ HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
 is a proven strategy for improving the efficiency, availability, consistency and
 response time variability of HTTP web services. These benefits are especially relevant
 in microservice architectures where a service's synchronous dependencies sometimes
-become unavailable and it is not always feasible or economical to add a caching layer
-between all services.
+become unavailable and it is not always feasible or economical to add a separate
+caching layer between all services.
 
 To date, very few software packages exist to solve this specific problem. Most
 microcache deployments make use of existing HTTP caching middleware. This presents

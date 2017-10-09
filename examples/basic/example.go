@@ -15,6 +15,7 @@ import (
 type handler struct {
 }
 
+// This example fills up to 1.2GB of memory, so at least 2.0GB of RAM is recommended
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Enable cache
@@ -24,10 +25,12 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Requests per sec for cache hits is mostly dependent on response size
 	// This cache can saturate a gigabit network connection with cache hits
 	// containing response bodies as small as 10kb on a dual core 3.3 Ghz i7 VM
-	n := rand.Intn(10)*1e4 + 1e4
-	msg := strings.Repeat("1234567890", n)
-	http.Error(w, msg, 200)
+	randn := rand.Intn(10) + 1
 
+	// Sleep between 10 and 100 ms
+	time.Sleep(time.Duration(randn*10) * time.Millisecond)
+
+	http.Error(w, strings.Repeat("1234567890", randn*1e3), 200)
 }
 
 func logStats(stats microcache.Stats) {
@@ -46,7 +49,7 @@ func logStats(stats microcache.Stats) {
 func main() {
 	// - Nocache: true
 	// Cache is disabled for all requests by default
-	// Cache can be enabled per request with response header
+	// Cache can be enabled per request hash with response header
 	//
 	//     microcache-cache: 1
 	//
@@ -82,11 +85,8 @@ func main() {
 	//
 	//     microcache-stale-while-revalidate: 20
 	//
-	// - HashQuery: false
-	// Query parameters are not hashed by default
-	// Responses can be splintered by query parameter with response header
-	//
-	//     microcache-vary-query: page, limit, etc...
+	// - HashQuery: true
+	// All query parameters are included in the request hash
 	//
 	// - Exposed: true
 	// Header will be appended to response indicating HIT / MISS / STALE
@@ -98,14 +98,16 @@ func main() {
 	//
 	cache := microcache.New(microcache.Config{
 		Nocache:              true,
-		Timeout:              5 * time.Second,
-		TTL:                  10 * time.Second,
-		StaleIfError:         600 * time.Second,
+		Timeout:              3 * time.Second,
+		TTL:                  30 * time.Second,
+		StaleIfError:         300 * time.Second,
 		StaleRecache:         true,
-		StaleWhileRevalidate: 20 * time.Second,
-		HashQuery:            false,
+		StaleWhileRevalidate: 300 * time.Second,
+		CollapsedForwarding:  true,
+		HashQuery:            true,
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
+		Driver:               microcache.NewDriverLRU(5 * 1e3),
 	})
 
 	chain := alice.New(cache.Middleware)
