@@ -50,6 +50,7 @@ import (
 type handler struct {
 }
 
+// This example fills up to 1.2GB of memory, so at least 2.0GB of RAM is recommended
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Enable cache
@@ -59,20 +60,23 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Requests per sec for cache hits is mostly dependent on response size
 	// This cache can saturate a gigabit network connection with cache hits
 	// containing response bodies as small as 10kb on a dual core 3.3 Ghz i7 VM
-	n := rand.Intn(10)*1e4 + 1e4
-	msg := strings.Repeat("1234567890", n)
-	http.Error(w, msg, 200)
+	randn := rand.Intn(10) + 1
 
+	// Sleep between 10 and 100 ms
+	time.Sleep(time.Duration(randn*10) * time.Millisecond)
+
+	http.Error(w, strings.Repeat("1234567890", randn*1e3), 200)
 }
 
 func logStats(stats microcache.Stats) {
 	total := stats.Hits + stats.Misses + stats.Stales
-	log.Printf("Size: %d, Total: %d, Hits: %d, Misses: %d, Stales: %d, Errors: %d\n",
+	log.Printf("Size: %d, Total: %d, Hits: %d, Misses: %d, Stales: %d, Backend: %d, Errors: %d\n",
 		stats.Size,
 		total,
 		stats.Hits,
 		stats.Misses,
 		stats.Stales,
+		stats.Backend,
 		stats.Errors,
 	)
 }
@@ -80,7 +84,7 @@ func logStats(stats microcache.Stats) {
 func main() {
 	// - Nocache: true
 	// Cache is disabled for all requests by default
-	// Cache can be enabled per request with response header
+	// Cache can be enabled per request hash with response header
 	//
 	//     microcache-cache: 1
 	//
@@ -89,7 +93,7 @@ func main() {
 	//
 	// - TTL: 10 * time.Second
 	// Responses which enable cache explicitly will be cached for 10s by default
-	// Response cache time can be configured per request with response header
+	// Response cache time can be configured per endpoint with response header
 	//
 	//     microcache-ttl: 30
 	//
@@ -116,18 +120,8 @@ func main() {
 	//
 	//     microcache-stale-while-revalidate: 20
 	//
-	// - TTLSync: true
-	// Cache expiration times will be synced to the system clock to avoid inconsistency
-	// between caches. In effect, all expiration times will fall on a multiple of 10s
-	// Can be disabled per request with response header
-	//
-	//     microcache-ttl-nosync: 1
-	//
-	// - HashQuery: false
-	// Query parameters are not hashed by default
-	// Responses can be splintered by query parameter with response header
-	//
-	//     microcache-vary-query: page, limit, etc...
+	// - HashQuery: true
+	// All query parameters are included in the request hash
 	//
 	// - Exposed: true
 	// Header will be appended to response indicating HIT / MISS / STALE
@@ -139,15 +133,16 @@ func main() {
 	//
 	cache := microcache.New(microcache.Config{
 		Nocache:              true,
-		Timeout:              5 * time.Second,
-		TTL:                  10 * time.Second,
-		StaleIfError:         600 * time.Second,
+		Timeout:              3 * time.Second,
+		TTL:                  30 * time.Second,
+		StaleIfError:         300 * time.Second,
 		StaleRecache:         true,
-		StaleWhileRevalidate: 20 * time.Second,
-		TTLSync:              true,
-		HashQuery:            false,
+		StaleWhileRevalidate: 300 * time.Second,
+		CollapsedForwarding:  true,
+		HashQuery:            true,
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
+		Driver:               microcache.NewDriverLRU(5 * 1e3),
 	})
 
 	chain := alice.New(cache.Middleware)
