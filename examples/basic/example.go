@@ -112,7 +112,7 @@ func main() {
 		QueryIgnore:          []string{},
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
-		Driver:               microcache.NewDriverLRU(5 * 1e3),
+		Driver:               microcache.NewDriverLRU(1e4),
 		Compressor:           microcache.CompressorGzip{},
 	})
 

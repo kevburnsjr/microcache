@@ -10,7 +10,7 @@ import (
 //     siege -f /tmp/urls.txt -c50 -b
 func main() {
 	file := ""
-	for i := 0; i < 5000; i++ {
+	for i := 0; i < 10000; i++ {
 		file = file + fmt.Sprintf("http://localhost/%d\n", rand.Int())
 	}
 	ioutil.WriteFile("/tmp/urls.txt", []byte(file), 0644)
