@@ -1,7 +1,6 @@
 package microcache
 
 import (
-	// "errors"
 	"github.com/hashicorp/golang-lru"
 )
 

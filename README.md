@@ -1,7 +1,7 @@
 **microcache** is a non-standard HTTP microcache implemented as Go middleware.
 
 HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
-is a proven strategy for improving the efficiency, availability, consistency and
+is a proven strategy for improving the efficiency, availability and
 response time variability of HTTP web services. These benefits are especially relevant
 in microservice architectures where a service's synchronous dependencies sometimes
 become unavailable and it is not always feasible or economical to add a separate
@@ -169,10 +169,6 @@ May improve service availability
 * **stale-if-error** - serve stale responses on error (or request timeout)
 * **stale-recache** - recache stale responses following stale-if-error
 
-May improve cache consistency
-
-* **ttl-sync** - synchronize response expiration times
-
 Supports content negotiation with global and request specific cache splintering
 
 * **vary** - splinter responses by request header value
@@ -208,8 +204,6 @@ Test time:                              10 sec
 ## Notes
 
 ```
-Move DriverGcache to microcache/driver package
-
 Vary query by parameter presence as well as value
 
 Modify Monitor.Error to accept request, response and error
