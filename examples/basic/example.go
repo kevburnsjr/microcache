@@ -53,18 +53,18 @@ func main() {
 	//
 	//     microcache-cache: 1
 	//
-	// - Timeout: 5 * time.Second
-	// Requests will be timed out and treated as 503 if they do not return within 5s
+	// - Timeout: 3 * time.Second
+	// Requests will be timed out and treated as 503 if they do not return within 35s
 	//
-	// - TTL: 10 * time.Second
-	// Responses which enable cache explicitly will be cached for 10s by default
+	// - TTL: 30 * time.Second
+	// Responses which enable cache explicitly will be cached for 30s by default
 	// Response cache time can be configured per endpoint with response header
 	//
 	//     microcache-ttl: 30
 	//
-	// - StaleIfError: 600 * time.Second
+	// - StaleIfError: 3600 * time.Second
 	// If the request encounters an error (or times out), a stale response will be returned
-	// provided that the stale cached response expired less than 10 minutes ago.
+	// provided that the stale cached response expired less than an hour ago.
 	// Can be altered per request with response header
 	// More Info: https://tools.ietf.org/html/rfc5861
 	//
@@ -77,9 +77,9 @@ func main() {
 	//
 	//     microcache-no-stale-recache: 1
 	//
-	// - StaleWhileRevalidate: 20 * time.Second
+	// - StaleWhileRevalidate: 30 * time.Second
 	// If the cache encounters a request for a cached object that has expired in the
-	// last 20s, the cache will reply immediately with a stale response and fetch
+	// last 30s, the cache will reply immediately with a stale response and fetch
 	// the resource in a background process.
 	// More Info: https://tools.ietf.org/html/rfc5861
 	//
@@ -87,6 +87,10 @@ func main() {
 	//
 	// - HashQuery: true
 	// All query parameters are included in the request hash
+	//
+	// - QueryIgnore: []string{}
+	// A list of query parameters to ignore when hashing the request
+	// Add oauth parameters or other unwanted cache busters to this list
 	//
 	// - Exposed: true
 	// Header will be appended to response indicating HIT / MISS / STALE
@@ -100,12 +104,12 @@ func main() {
 		Nocache:              true,
 		Timeout:              3 * time.Second,
 		TTL:                  30 * time.Second,
-		StaleIfError:         300 * time.Second,
+		StaleIfError:         3600 * time.Second,
 		StaleRecache:         true,
-		StaleWhileRevalidate: 300 * time.Second,
+		StaleWhileRevalidate: 30 * time.Second,
 		CollapsedForwarding:  true,
 		HashQuery:            true,
-		QueryIgnore:          []string{"a"},
+		QueryIgnore:          []string{},
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
 		Driver:               microcache.NewDriverLRU(5 * 1e3),
