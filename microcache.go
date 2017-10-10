@@ -25,6 +25,7 @@ type microcache struct {
 	CollapsedForwarding  bool
 	Vary                 []string
 	Driver               Driver
+	Compressor           Compressor
 	Monitor              Monitor
 	Exposed              bool
 
@@ -95,9 +96,14 @@ type Config struct {
 	// Default: []string{}
 	Vary []string
 
-	// Driver specifies a cache storage driver.
-	// Default: gcache with 10,000 item capacity
+	// Driver specifies a cache storage driver
+	// Default: lru with 10,000 item capacity
 	Driver Driver
+
+	// Compressor specifies a compressor to use for reducing the memory required to cache
+	// response bodies
+	// Default: nil
+	Compressor Compressor
 
 	// Monitor is an optional parameter which will periodically report statistics about
 	// the cache to enable monitoring of cache size, cache efficiency and error rate
@@ -124,6 +130,7 @@ func New(o Config) Microcache {
 		CollapsedForwarding:  o.CollapsedForwarding,
 		Vary:                 o.Vary,
 		Driver:               o.Driver,
+		Compressor:           o.Compressor,
 		Monitor:              o.Monitor,
 		Exposed:              o.Exposed,
 		revalidating:         map[string]bool{},
@@ -203,6 +210,9 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		if req.found {
 			objHash = req.getObjectHash(reqHash, r)
 			obj = m.Driver.Get(objHash)
+			if m.Compressor != nil {
+				m.Compressor.Expand(obj)
+			}
 		}
 
 		// Non-cacheable request method passthrough and purge
@@ -299,7 +309,11 @@ func (m *microcache) handleBackendResponse(
 		// Extend stale response expiration by staleIfError grace period
 		if req.found && serveStale && req.staleRecache {
 			obj.expires = time.Now().Add(req.ttl)
-			m.Driver.Set(objHash, obj)
+			if m.Compressor != nil {
+				m.Driver.Set(objHash, m.Compressor.Compress(obj))
+			} else {
+				m.Driver.Set(objHash, obj)
+			}
 		}
 		if m.Monitor != nil {
 			m.Monitor.Error()
@@ -328,7 +342,11 @@ func (m *microcache) handleBackendResponse(
 		if !req.nocache {
 			beres.found = true
 			beres.expires = time.Now().Add(req.ttl)
-			m.Driver.Set(objHash, beres)
+			if m.Compressor != nil {
+				m.Driver.Set(objHash, m.Compressor.Compress(beres))
+			} else {
+				m.Driver.Set(objHash, beres)
+			}
 		}
 	}
 

@@ -44,6 +44,16 @@ func (res *Response) sendResponse(w http.ResponseWriter) {
 	return
 }
 
+func (res *Response) clone() Response {
+	return Response{
+		found:   res.found,
+		expires: res.expires,
+		status:  res.status,
+		header:  res.header,
+		body:    res.body,
+	}
+}
+
 type passthroughWriter struct {
 	http.ResponseWriter
 	status int
