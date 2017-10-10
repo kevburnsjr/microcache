@@ -105,6 +105,7 @@ func main() {
 		StaleWhileRevalidate: 300 * time.Second,
 		CollapsedForwarding:  true,
 		HashQuery:            true,
+		QueryIgnore:          []string{"a"},
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
 		Driver:               microcache.NewDriverLRU(5 * 1e3),

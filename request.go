@@ -13,7 +13,18 @@ import (
 func getRequestHash(m *microcache, r *http.Request) string {
 	reqHash := r.URL.Path
 	if m.HashQuery {
-		reqHash = reqHash + r.URL.RawQuery
+		if m.QueryIgnore != nil {
+			for key, values := range r.URL.Query() {
+				if _, ok := m.QueryIgnore[key]; ok {
+					continue
+				}
+				for _, value := range values {
+					reqHash = reqHash + "&" + key + "=" + value
+				}
+			}
+		} else {
+			reqHash = reqHash + r.URL.RawQuery
+		}
 	}
 	for _, header := range m.Vary {
 		reqHash = reqHash + header + r.Header.Get(header)

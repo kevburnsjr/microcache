@@ -22,6 +22,7 @@ type microcache struct {
 	StaleRecache         bool
 	StaleWhileRevalidate time.Duration
 	HashQuery            bool
+	QueryIgnore          map[string]bool
 	CollapsedForwarding  bool
 	Vary                 []string
 	Driver               Driver
@@ -87,6 +88,10 @@ type Config struct {
 	// Default: false
 	HashQuery bool
 
+	// QueryIgnore is a list of query parameters to ignore when hashing
+	// Default: nil
+	QueryIgnore []string
+
 	// Vary specifies a list of http request headers by which all requests
 	// should be differentiated. When making use of this option, it may be a good idea
 	// to normalize these headers first using a separate piece of middleware.
@@ -140,6 +145,12 @@ func New(o Config) Microcache {
 	}
 	if o.Driver == nil {
 		m.Driver = NewDriverLRU(1e4) // default 10k cache items
+	}
+	if o.QueryIgnore != nil {
+		m.QueryIgnore = make(map[string]bool)
+		for _, key := range o.QueryIgnore {
+			m.QueryIgnore[key] = true
+		}
 	}
 	m.Start()
 	return &m
