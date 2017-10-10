@@ -1,9 +1,9 @@
 package microcache
 
 import (
+	"bytes"
 	"compress/gzip"
 	"io/ioutil"
-	"bytes"
 )
 
 // CompressorGzip is a gzip compressor
