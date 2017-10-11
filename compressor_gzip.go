@@ -10,9 +10,6 @@ import (
 type CompressorGzip struct {
 }
 
-// Compress clones the supplied object
-// This causes a memcopy of the response body, slowing down cache writes
-// Could probably be optimized
 func (c CompressorGzip) Compress(res Response) Response {
 	newres := res.clone()
 	var buf bytes.Buffer
@@ -23,8 +20,6 @@ func (c CompressorGzip) Compress(res Response) Response {
 	return newres
 }
 
-// Expand modifies the supplied object
-// Does not require memcopy, performance on par with no compression
 func (c CompressorGzip) Expand(res Response) Response {
 	buf := bytes.NewBuffer(res.body)
 	zr, _ := gzip.NewReader(buf)

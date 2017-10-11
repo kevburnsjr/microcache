@@ -148,7 +148,7 @@ func main() {
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
 		Driver:               microcache.NewDriverLRU(1e4),
-		Compressor:           microcache.CompressorGzip{},
+		Compressor:           microcache.CompressorSnappy{},
 	})
 
 	chain := alice.New(cache.Middleware)
@@ -187,6 +187,44 @@ Tests have not yet been written to confirm the correct behavior of this cache.
 While it is fairly certain that all logic pertaining to the various caching mechanisms
 that this cache supports is operating correctly, 100% test coverage should be completed
 before this library can be recommended for use in production.
+
+## Compression
+
+A Snappy driver has been added for projects who want to trade CPU for memory over gzip
+
+Snappy provides:
+
+- 14x faster compression over gzip
+- 8x faster expansion over gzip
+- but the result is 1.5 - 2x the size compared to gzip (for specific json examples)
+
+Your mileage may vary. See ```examples/compare_compression.go``` to test your specific workloads
+
+```
+Original: 616,611 bytes of json
+zlib   compress 719.853807ms  61,040 bytes
+gzip   compress 720.731066ms  61,052 bytes
+snappy compress 48.836002ms  106,613 bytes
+zlib   expand 211.538416ms
+gzip   expand 220.011961ms
+snappy expand 26.973263ms
+
+Original: 279,368 bytes of json
+zlib   compress 282.549098ms 19,825 bytes
+gzip   compress 275.961026ms 19,837 bytes
+snappy compress 16.452706ms  37,096 bytes
+zlib   expand 86.704103ms
+gzip   expand 81.188856ms
+snappy expand 10.557594ms
+
+Original: 53,129 bytes of json
+zlib   compress 73.204418ms 5,084 bytes
+gzip   compress 74.150401ms 5,096 bytes
+snappy compress 5.225558ms  8,412 bytes
+zlib   expand 18.764693ms
+gzip   expand 18.797717ms
+snappy expand 2.354814ms
+```
 
 ## Benchmarks
 

@@ -113,7 +113,7 @@ func main() {
 		Exposed:              true,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
 		Driver:               microcache.NewDriverLRU(1e4),
-		Compressor:           microcache.CompressorGzip{},
+		Compressor:           microcache.CompressorSnappy{},
 	})
 
 	chain := alice.New(cache.Middleware)
