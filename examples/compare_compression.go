@@ -36,7 +36,7 @@ func main() {
 	for i := 0; i < 1e2; i++ {
 		c = compressZlib(dat)
 	}
-	fmt.Printf("zlib compress %v %d bytes (%.2fx)\n", time.Since(start), len(c), float64(len(c))/float64(orig))
+	fmt.Printf("zlib compress %v %d bytes (%.1fx)\n", time.Since(start), len(c), float64(orig)/float64(len(c)))
 
 	start = time.Now()
 	for i := 0; i < 1e2; i++ {
@@ -48,7 +48,7 @@ func main() {
 	for i := 0; i < 1e2; i++ {
 		c = compressGzip(dat)
 	}
-	fmt.Printf("gzip compress %v %d bytes (%.2fx)\n", time.Since(start), len(c), float64(len(c))/float64(orig))
+	fmt.Printf("gzip compress %v %d bytes (%.1fx)\n", time.Since(start), len(c), float64(orig)/float64(len(c)))
 
 	start = time.Now()
 	for i := 0; i < 1e2; i++ {
@@ -60,7 +60,7 @@ func main() {
 	for i := 0; i < 1e2; i++ {
 		c = compressSnappy(dat)
 	}
-	fmt.Printf("snappy compress %v %d bytes (%.2fx)\n", time.Since(start), len(c), float64(len(c))/float64(orig))
+	fmt.Printf("snappy compress %v %d bytes (%.1fx)\n", time.Since(start), len(c), float64(orig)/float64(len(c)))
 
 	start = time.Now()
 	for i := 0; i < 1e2; i++ {

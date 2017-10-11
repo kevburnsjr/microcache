@@ -198,26 +198,29 @@ Snappy provides:
 Your mileage may vary. See ```examples/compare_compression.go``` to test your specific workloads
 
 ```
+> go run examples/compare_compression.go -f large.json
 Original: 616,611 bytes of json
-zlib   compress 719.853807ms  61,040 bytes
-gzip   compress 720.731066ms  61,052 bytes
-snappy compress 48.836002ms  106,613 bytes
+zlib   compress 719.853807ms  61,040 bytes (10.1x)
+gzip   compress 720.731066ms  61,052 bytes (10.1x)
+snappy compress 48.836002ms  106,613 bytes (5.8x)
 zlib   expand 211.538416ms
 gzip   expand 220.011961ms
 snappy expand 26.973263ms
 
+> go run examples/compare_compression.go -f medium.json
 Original: 279,368 bytes of json
-zlib   compress 282.549098ms 19,825 bytes
-gzip   compress 275.961026ms 19,837 bytes
-snappy compress 16.452706ms  37,096 bytes
+zlib   compress 282.549098ms 19,825 bytes (14.1x)
+gzip   compress 275.961026ms 19,837 bytes (14.1x)
+snappy compress 16.452706ms  37,096 bytes (7.5x)
 zlib   expand 86.704103ms
 gzip   expand 81.188856ms
 snappy expand 10.557594ms
 
+> go run examples/compare_compression.go -f small.json
 Original: 53,129 bytes of json
-zlib   compress 73.204418ms 5,084 bytes
-gzip   compress 74.150401ms 5,096 bytes
-snappy compress 5.225558ms  8,412 bytes
+zlib   compress 73.204418ms 5,084 bytes (10.5x)
+gzip   compress 74.150401ms 5,096 bytes (10.4x)
+snappy compress 5.225558ms  8,412 bytes (6.3x)
 zlib   expand 18.764693ms
 gzip   expand 18.797717ms
 snappy expand 2.354814ms
