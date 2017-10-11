@@ -54,15 +54,15 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Enable cache
 	w.Header().Set("microcache-cache", "1")
 
-	// Return a response body of random size between 10 and 100 kilobytes
-	// Requests per sec for cache hits is mostly dependent on response size
-	// This cache can saturate a gigabit network connection with cache hits
-	// containing response bodies as small as 10kb on a dual core 3.3 Ghz i7 VM
 	randn := rand.Intn(10) + 1
 
 	// Sleep between 10 and 100 ms
 	time.Sleep(time.Duration(randn*10) * time.Millisecond)
 
+	// Return a response body of random size between 10 and 100 kilobytes
+	// Requests per sec for cache hits is mostly dependent on response size
+	// This cache can saturate a gigabit network connection with cache hits
+	// containing response bodies as small as 10kb on a dual core 3.3 Ghz i7 VM
 	http.Error(w, strings.Repeat("1234567890", randn*1e3), 200)
 }
 
