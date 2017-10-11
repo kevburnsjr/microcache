@@ -1,8 +1,6 @@
 package microcache
 
 import (
-	"bytes"
-
 	"github.com/golang/snappy"
 )
 
