@@ -195,7 +195,7 @@ Snappy provides:
 - 8x faster expansion over gzip
 - but the result is 1.5 - 2x the size compared to gzip (for specific json examples)
 
-Your mileage may vary. See ```examples/compare_compression.go``` to test your specific workloads
+Your mileage may vary. See ```tools/compare_compression.go``` to test your specific workloads
 
 ```
 > go run examples/compare_compression.go -f large.json
