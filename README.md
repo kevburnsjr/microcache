@@ -42,8 +42,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/justinas/alice"
-
 	"github.com/httpimp/microcache"
 )
 
@@ -151,8 +149,7 @@ func main() {
 		Compressor:           microcache.CompressorSnappy{},
 	})
 
-	chain := alice.New(cache.Middleware)
-	h := chain.Then(handler{})
+	h := cache.Middleware(handler{})
 
 	http.ListenAndServe(":80", h)
 }
