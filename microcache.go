@@ -222,7 +222,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			objHash = req.getObjectHash(reqHash, r)
 			obj = m.Driver.Get(objHash)
 			if m.Compressor != nil {
-				m.Compressor.Expand(obj)
+				obj = m.Compressor.Expand(obj)
 			}
 		}
 
