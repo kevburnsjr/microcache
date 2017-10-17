@@ -12,6 +12,7 @@ type Microcache interface {
 	Middleware(http.Handler) http.Handler
 	Start()
 	Stop()
+	offsetIncr(time.Duration)
 }
 
 type microcache struct {
@@ -35,6 +36,9 @@ type microcache struct {
 	revalidateMutex *sync.Mutex
 	collapse        map[string]*sync.Mutex
 	collapseMutex   *sync.Mutex
+
+	// Used to advance time for testing
+	offset time.Duration
 }
 
 type Config struct {
@@ -246,7 +250,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		}
 
 		// Fresh response object found
-		if obj.found && obj.expires.After(time.Now()) {
+		if obj.found && obj.expires.After(time.Now().Add(m.offset)) {
 			if m.Monitor != nil {
 				m.Monitor.Hit()
 			}
@@ -259,7 +263,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 
 		// Stale While Revalidate
 		if obj.found && req.staleWhileRevalidate > 0 &&
-			obj.expires.Add(req.staleWhileRevalidate).After(time.Now()) {
+			obj.expires.Add(req.staleWhileRevalidate).After(time.Now().Add(m.offset)) {
 			if m.Monitor != nil {
 				m.Monitor.Stale()
 			}
@@ -314,20 +318,22 @@ func (m *microcache) handleBackendResponse(
 		h.ServeHTTP(&beres, r)
 	}
 
+	// Log Error
+	if beres.status >= 500 && m.Monitor != nil {
+		m.Monitor.Error()
+	}
+
 	// Serve Stale
 	if beres.status >= 500 && obj.found {
-		serveStale := obj.expires.Add(req.staleIfError).After(time.Now())
+		serveStale := obj.expires.Add(req.staleIfError).After(time.Now().Add(m.offset))
 		// Extend stale response expiration by staleIfError grace period
 		if req.found && serveStale && req.staleRecache {
-			obj.expires = time.Now().Add(req.ttl)
+			obj.expires = time.Now().Add(m.offset).Add(req.ttl)
 			if m.Compressor != nil {
 				m.Driver.Set(objHash, m.Compressor.Compress(obj))
 			} else {
 				m.Driver.Set(objHash, obj)
 			}
-		}
-		if m.Monitor != nil {
-			m.Monitor.Error()
 		}
 		if !revalidate && serveStale {
 			if m.Monitor != nil {
@@ -352,7 +358,7 @@ func (m *microcache) handleBackendResponse(
 		// Cache response
 		if !req.nocache {
 			beres.found = true
-			beres.expires = time.Now().Add(req.ttl)
+			beres.expires = time.Now().Add(m.offset).Add(req.ttl)
 			if m.Compressor != nil {
 				m.Driver.Set(objHash, m.Compressor.Compress(beres))
 			} else {
@@ -401,4 +407,9 @@ func (m *microcache) Start() {
 // Stop stops the monitor and any other required background processes
 func (m *microcache) Stop() {
 	m.stopMonitor <- true
+}
+
+// Increments the offset for testing purposes
+func (m *microcache) offsetIncr(o time.Duration) {
+	m.offset += o
 }
