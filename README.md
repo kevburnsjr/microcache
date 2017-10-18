@@ -179,11 +179,10 @@ Supports content negotiation with global and request specific cache splintering
 
 ## Release
 
-Tests have not yet been written to confirm the correct behavior of this cache.
+Tests have been written to confirm the correct behavior of this cache.
 
-While it is fairly certain that all logic pertaining to the various caching mechanisms
-that this cache supports is operating correctly, 100% test coverage should be completed
-before this library can be recommended for use in production.
+At least one large scale deploy of this library is currently underway in an API serving 20,000
+requests per minute at peak. Results pending.
 
 ## Compression
 
