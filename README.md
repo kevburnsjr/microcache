@@ -1,4 +1,4 @@
-**microcache** is a non-standard HTTP microcache implemented as Go middleware.
+**microcache** is a non-standard HTTP cache implemented as Go middleware.
 
 HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
 is a proven strategy for improving the efficiency, availability and
@@ -15,7 +15,7 @@ headers with aggressive short TTLs for the microcache or less aggressive longer 
 headers more suitable to CDNs. The overlap in HTTP header key space prevents these two
 cache layers from coexisting without some additional customization.
 
-All request specific custom headers supported by this cache are prefixed with
+All request specific custom response headers supported by this cache are prefixed with
 ```microcache-``` and scrubbed from the response. Most of the common HTTP caching
 headers one would expect to see in an http cache are ignored (except Vary). This
 was intentional and support may change depending on developer feedback. The purpose of
@@ -105,7 +105,7 @@ func main() {
 	//
 	// - StaleRecache: true
 	// Upon serving a stale response following an error, that stale response will be
-	// re-cached for the default ttl (10s)
+	// re-cached for the default ttl (3s)
 	// Can be disabled per request with response header
 	//
 	//     microcache-no-stale-recache: 1
@@ -174,8 +174,8 @@ May improve service availability
 
 Supports content negotiation with global and request specific cache splintering
 
-* **vary** - splinter responses by request header value
-* **vary-query** - splinter responses by URL query parameter value
+* **vary** - splinter requests by request header value
+* **vary-query** - splinter requests by URL query parameter value
 
 ## Release
 
@@ -189,7 +189,7 @@ before this library can be recommended for use in production.
 
 A Snappy driver has been added for projects who want to trade CPU for memory over gzip
 
-Snappy provides:
+[Snappy](https://github.com/golang/snappy) provides:
 
 - 14x faster compression over gzip
 - 8x faster expansion over gzip
@@ -257,7 +257,6 @@ Separate middleware:
   Sanitize lang header? (first language)
   Sanitize region? (country code)
 
-gzip cache entries?
 etag support?
 if-modified-since support?
 HTCP?
