@@ -197,7 +197,7 @@ A Snappy driver has been added for projects who want to trade CPU for memory ove
 Your mileage may vary. See ```tools/compare_compression.go``` to test your specific workloads
 
 ```
-> go run examples/compare_compression.go -f large.json
+> go run tools/compare_compression.go -f large.json
 Original: 616,611 bytes of json
 zlib   compress 719.853807ms  61,040 bytes (10.1x)
 gzip   compress 720.731066ms  61,052 bytes (10.1x)
@@ -206,7 +206,7 @@ zlib   expand 211.538416ms
 gzip   expand 220.011961ms
 snappy expand 26.973263ms
 
-> go run examples/compare_compression.go -f medium.json
+> go run tools/compare_compression.go -f medium.json
 Original: 279,368 bytes of json
 zlib   compress 282.549098ms 19,825 bytes (14.1x)
 gzip   compress 275.961026ms 19,837 bytes (14.1x)
@@ -215,7 +215,7 @@ zlib   expand 86.704103ms
 gzip   expand 81.188856ms
 snappy expand 10.557594ms
 
-> go run examples/compare_compression.go -f small.json
+> go run tools/compare_compression.go -f small.json
 Original: 53,129 bytes of json
 zlib   compress 73.204418ms 5,084 bytes (10.5x)
 gzip   compress 74.150401ms 5,096 bytes (10.4x)
