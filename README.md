@@ -1,7 +1,7 @@
 **microcache** is a non-standard HTTP cache implemented as Go middleware.
 
 HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
-is a proven strategy for improving the efficiency, availability and
+is a well known strategy for improving the efficiency, availability and
 response time variability of HTTP web services. These benefits are especially relevant
 in microservice architectures where a service's synchronous dependencies sometimes
 become unavailable and it is not always feasible or economical to add a separate
