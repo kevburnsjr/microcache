@@ -16,6 +16,10 @@ type DriverLRU struct {
 // The amount of memory consumed by the driver will depend upon the response size.
 // Roughly, memory = cacheSize * averageResponseSize
 func NewDriverLRU(size int) DriverLRU {
+	// golang-lru segfaults when size is zero
+	if size < 1 {
+		size = 1
+	}
 	reqCache, _ := lru.New(size)
 	resCache, _ := lru.New(size)
 	return DriverLRU{
