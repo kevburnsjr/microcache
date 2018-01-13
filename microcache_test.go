@@ -297,6 +297,45 @@ func TestCollapsedFowarding(t *testing.T) {
 	cache.Stop()
 }
 
+// SuppressAgeHeader
+func TestAgeHeader(t *testing.T) {
+	// Age header is added by default
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:               30 * time.Second,
+		Monitor:           testMonitor,
+		Driver:            NewDriverLRU(10),
+	})
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	batchGet(handler, []string{
+		"/",
+	})
+	cache.offsetIncr(20 * time.Second)
+	w := getResponse(handler, "/")
+	if w.Header().Get("age") != "20" {
+		t.Log("Age header was not correct \"", w.Header().Get("age"), "\" != 20")
+		t.Fail()
+	}
+	cache.Stop()
+	// Age header can be suppressed
+	cache = New(Config{
+		TTL:               30 * time.Second,
+		SuppressAgeHeader: true,
+		Monitor:           testMonitor,
+		Driver:            NewDriverLRU(10),
+	})
+	handler = cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	batchGet(handler, []string{
+		"/",
+	})
+	w = getResponse(handler, "/")
+	if w.Header().Get("age") != "" {
+		t.Log("Age header was added when it should be empty")
+		t.Fail()
+	}
+	cache.Stop()
+}
+
 // --- helper funcs ---
 
 func batchGet(handler http.Handler, urls []string) {
@@ -317,6 +356,13 @@ func parallelGet(handler http.Handler, urls []string) {
 		}()
 	}
 	wg.Wait()
+}
+
+func getResponse(handler http.Handler, url string) *httptest.ResponseRecorder {
+	r, _ := http.NewRequest("GET", url, nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	return w
 }
 
 func noopSuccessHandler(w http.ResponseWriter, r *http.Request) {

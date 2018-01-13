@@ -10,6 +10,7 @@ import (
 // and to wrap http.ResponseWriter for downstream requests.
 type Response struct {
 	found   bool
+	date    time.Time
 	expires time.Time
 	status  int
 	header  http.Header

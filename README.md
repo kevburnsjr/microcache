@@ -23,10 +23,10 @@ this cache is not to act as a substitute for a robust HTTP caching layer but rat
 to serve as an additional caching layer with separate controls for shorter lived,
 more aggressive caching measures.
 
-The manner in which this cache operates (writing responses to byte buffers) may not be
-suitable for all applications. Caching should certainly be disabled for any resources
-serving very large and/or streaming responses. For instance, caching is automatically
-disabled for all websocket requests.
+The manner in which this cache operates (writing responses bodies to byte buffers) may
+not be suitable for all applications. Caching should certainly be disabled for any
+resources serving very large and/or streaming responses. For instance, caching is
+automatically disabled for all websocket requests.
 
 More info in the docs: https://godoc.org/github.com/httpimp/microcache
 
@@ -130,6 +130,11 @@ func main() {
 	//
 	//     microcache: ( HIT | MISS | STALE )
 	//
+	// - SuppressAgeHeader: false
+	// Header will be appended to response indicating the age of the object
+	//
+	//     age: ( seconds )
+	//
 	// - Monitor: microcache.MonitorFunc(5 * time.Second, logStats)
 	// LogStats will be called every 5s to log stats about the cache
 	//
@@ -144,6 +149,7 @@ func main() {
 		HashQuery:            true,
 		QueryIgnore:          []string{},
 		Exposed:              true,
+		SuppressAgeHeader:    false,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
 		Driver:               microcache.NewDriverLRU(1e4),
 		Compressor:           microcache.CompressorSnappy{},

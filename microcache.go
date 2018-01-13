@@ -2,6 +2,7 @@
 package microcache
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -30,6 +31,7 @@ type microcache struct {
 	Compressor           Compressor
 	Monitor              Monitor
 	Exposed              bool
+	SuppressAgeHeader    bool
 
 	stopMonitor     chan bool
 	revalidating    map[string]bool
@@ -121,8 +123,14 @@ type Config struct {
 
 	// Exposed determines whether to add a header to the response indicating the response state
 	// Microcache: ( HIT | MISS | STALE )
-	// Default: 0
+	// Default: false
 	Exposed bool
+
+	// SuppressAgeHeader determines whether to suppress the age header in responses
+	// The age header is added by default to all responses
+	// Age: ( seconds )
+	// Default: false
+	SuppressAgeHeader bool
 }
 
 // New creates and returns a configured microcache instance
@@ -142,6 +150,7 @@ func New(o Config) Microcache {
 		Compressor:           o.Compressor,
 		Monitor:              o.Monitor,
 		Exposed:              o.Exposed,
+		SuppressAgeHeader:    o.SuppressAgeHeader,
 		revalidating:         map[string]bool{},
 		revalidateMutex:      &sync.Mutex{},
 		collapse:             map[string]*sync.Mutex{},
@@ -257,6 +266,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			if m.Exposed {
 				w.Header().Set("microcache", "HIT")
 			}
+			m.setAgeHeader(w, obj)
 			obj.sendResponse(w)
 			return
 		}
@@ -270,6 +280,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
+			m.setAgeHeader(w, obj)
 			obj.sendResponse(w)
 			go m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, true)
 			return
@@ -328,7 +339,8 @@ func (m *microcache) handleBackendResponse(
 		serveStale := obj.expires.Add(req.staleIfError).After(time.Now().Add(m.offset))
 		// Extend stale response expiration by staleIfError grace period
 		if req.found && serveStale && req.staleRecache {
-			obj.expires = time.Now().Add(m.offset).Add(req.ttl)
+			obj.date = time.Now()
+			obj.expires = obj.date.Add(m.offset).Add(req.ttl)
 			if m.Compressor != nil {
 				m.Driver.Set(objHash, m.Compressor.Compress(obj))
 			} else {
@@ -342,6 +354,7 @@ func (m *microcache) handleBackendResponse(
 			if m.Exposed {
 				w.Header().Set("microcache", "STALE")
 			}
+			m.setAgeHeader(w, obj)
 			obj.sendResponse(w)
 			return
 		}
@@ -358,6 +371,7 @@ func (m *microcache) handleBackendResponse(
 		// Cache response
 		if !req.nocache {
 			beres.found = true
+			beres.date = time.Now()
 			beres.expires = time.Now().Add(m.offset).Add(req.ttl)
 			if m.Compressor != nil {
 				m.Driver.Set(objHash, m.Compressor.Compress(beres))
@@ -401,6 +415,14 @@ func (m *microcache) Start() {
 				}
 			}
 		}()
+	}
+}
+
+// SetAgeHeader sets the age header if not suppressed
+func (m *microcache) setAgeHeader(w http.ResponseWriter, obj Response) {
+	if !m.SuppressAgeHeader {
+		age := (time.Now().Add(m.offset).Unix() - obj.date.Unix())
+		obj.Header().Set("age", fmt.Sprintf("%d", age))
 	}
 }
 

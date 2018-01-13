@@ -95,6 +95,11 @@ func main() {
 	//
 	//     microcache: ( HIT | MISS | STALE )
 	//
+	// - SuppressAgeHeader: false
+	// Header will be appended to response indicating the age of the object
+	//
+	//     age: ( seconds )
+	//
 	// - Monitor: microcache.MonitorFunc(5 * time.Second, logStats)
 	// LogStats will be called every 5s to log stats about the cache
 	//
@@ -109,6 +114,7 @@ func main() {
 		HashQuery:            true,
 		QueryIgnore:          []string{},
 		Exposed:              true,
+		SuppressAgeHeader:    false,
 		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
 		Driver:               microcache.NewDriverLRU(1e4),
 		Compressor:           microcache.CompressorSnappy{},
