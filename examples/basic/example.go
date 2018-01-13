@@ -96,9 +96,11 @@ func main() {
 	//     microcache: ( HIT | MISS | STALE )
 	//
 	// - SuppressAgeHeader: false
-	// Header will be appended to response indicating the age of the object
+	// Age is a standard HTTP header indicating the age of the cached object in seconds
+	// The Age header is added by default to all HIT and MISS responses
+	// This parameter prevents the Age header from being set
 	//
-	//     age: ( seconds )
+	//     Age: ( seconds )
 	//
 	// - Monitor: microcache.MonitorFunc(5 * time.Second, logStats)
 	// LogStats will be called every 5s to log stats about the cache

@@ -127,7 +127,7 @@ type Config struct {
 	Exposed bool
 
 	// SuppressAgeHeader determines whether to suppress the age header in responses
-	// The age header is added by default to all responses
+	// The age header is added by default to all HIT and STALE responses
 	// Age: ( seconds )
 	// Default: false
 	SuppressAgeHeader bool
