@@ -336,6 +336,32 @@ func TestAgeHeader(t *testing.T) {
 	cache.Stop()
 }
 
+// ARCCache should work as expected
+func TestARCCache(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverARC(10),
+	})
+	cache.Start()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	cache.offsetIncr(30 * time.Second)
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	if testMonitor.misses != 2 || testMonitor.hits != 2 {
+		t.Log("TTL not respected by ARC - got", testMonitor.hits, "hits")
+		t.Fail()
+	}
+	cache.Stop()
+}
+
 // --- helper funcs ---
 
 func batchGet(handler http.Handler, urls []string) {
