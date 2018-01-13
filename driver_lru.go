@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/golang-lru"
 )
 
-// DriverLRU is a driver implementation based on github.com/hashicorp/golang-lru
+// DriverLRU is a driver implementation using github.com/hashicorp/golang-lru
 type DriverLRU struct {
 	RequestCache  *lru.Cache
 	ResponseCache *lru.Cache
@@ -14,7 +14,7 @@ type DriverLRU struct {
 // size determines the number of items in the cache.
 // Memory usage should be considered when choosing the appropriate cache size.
 // The amount of memory consumed by the driver will depend upon the response size.
-// Roughly, memory = cacheSize * averageResponseSize
+// Roughly, memory = cacheSize * averageResponseSize / compression ratio
 func NewDriverLRU(size int) DriverLRU {
 	// golang-lru segfaults when size is zero
 	if size < 1 {

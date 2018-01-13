@@ -23,7 +23,7 @@ this cache is not to act as a substitute for a robust HTTP caching layer but rat
 to serve as an additional caching layer with separate controls for shorter lived,
 more aggressive caching measures.
 
-The manner in which this cache operates (writing responses bodies to byte buffers) may
+The manner in which this cache operates (writing response bodies to byte buffers) may
 not be suitable for all applications. Caching should certainly be disabled for any
 resources serving very large and/or streaming responses. For instance, caching is
 automatically disabled for all websocket requests.

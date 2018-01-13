@@ -339,13 +339,8 @@ func (m *microcache) handleBackendResponse(
 		serveStale := obj.expires.Add(req.staleIfError).After(time.Now().Add(m.offset))
 		// Extend stale response expiration by staleIfError grace period
 		if req.found && serveStale && req.staleRecache {
-			obj.date = time.Now()
 			obj.expires = obj.date.Add(m.offset).Add(req.ttl)
-			if m.Compressor != nil {
-				m.Driver.Set(objHash, m.Compressor.Compress(obj))
-			} else {
-				m.Driver.Set(objHash, obj)
-			}
+			m.store(objHash, obj)
 		}
 		if !revalidate && serveStale {
 			if m.Monitor != nil {
@@ -370,14 +365,8 @@ func (m *microcache) handleBackendResponse(
 		}
 		// Cache response
 		if !req.nocache {
-			beres.found = true
-			beres.date = time.Now()
 			beres.expires = time.Now().Add(m.offset).Add(req.ttl)
-			if m.Compressor != nil {
-				m.Driver.Set(objHash, m.Compressor.Compress(beres))
-			} else {
-				m.Driver.Set(objHash, beres)
-			}
+			m.store(objHash, beres)
 		}
 	}
 
@@ -418,13 +407,25 @@ func (m *microcache) Start() {
 	}
 }
 
-// SetAgeHeader sets the age header if not suppressed
+// setAgeHeader sets the age header if not suppressed
 func (m *microcache) setAgeHeader(w http.ResponseWriter, obj Response) {
 	if !m.SuppressAgeHeader {
 		age := (time.Now().Add(m.offset).Unix() - obj.date.Unix())
 		obj.Header().Set("age", fmt.Sprintf("%d", age))
 	}
 }
+
+// store sets the age header if not suppressed
+func (m *microcache) store(objHash string, obj Response) {
+	obj.found = true
+	obj.date = time.Now()
+	if m.Compressor != nil {
+		m.Driver.Set(objHash, m.Compressor.Compress(obj))
+	} else {
+		m.Driver.Set(objHash, obj)
+	}
+}
+
 
 // Stop stops the monitor and any other required background processes
 func (m *microcache) Stop() {

@@ -302,9 +302,9 @@ func TestAgeHeader(t *testing.T) {
 	// Age header is added by default
 	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
 	cache := New(Config{
-		TTL:               30 * time.Second,
-		Monitor:           testMonitor,
-		Driver:            NewDriverLRU(10),
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
 	})
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{

@@ -97,7 +97,7 @@ func main() {
 	//
 	// - SuppressAgeHeader: false
 	// Age is a standard HTTP header indicating the age of the cached object in seconds
-	// The Age header is added by default to all HIT and MISS responses
+	// The Age header is added by default to all HIT and STALE responses
 	// This parameter prevents the Age header from being set
 	//
 	//     Age: ( seconds )
