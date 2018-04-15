@@ -6,7 +6,7 @@ import (
 
 // DriverARC is a driver implementation using github.com/hashicorp/golang-lru
 // ARCCache is a thread-safe fixed size Adaptive Replacement Cache (ARC).
-// It requires more ram and cpu than straight LRO but can be more efficient
+// It requires more ram and cpu than straight LRU but can be more efficient
 // https://godoc.org/github.com/hashicorp/golang-lru#ARCCache
 type DriverARC struct {
 	RequestCache  *lru.ARCCache
