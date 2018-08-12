@@ -48,6 +48,7 @@ func (res *Response) sendResponse(w http.ResponseWriter) {
 func (res *Response) clone() Response {
 	return Response{
 		found:   res.found,
+		date:    res.date,
 		expires: res.expires,
 		status:  res.status,
 		header:  res.header,
