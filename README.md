@@ -202,7 +202,7 @@ A Snappy driver has been added for projects who want to trade CPU for memory ove
 - 8x faster expansion over gzip
 - but the result is 1.5 - 2x the size compared to gzip (for specific json examples)
 
-Your mileage may vary. See ```tools/compare_compression.go``` to test your specific workloads
+Your mileage may vary. See [compare_compression.go](tools/compare_compression/compare_compression.go) to test your specific workloads
 
 ```
 > go run tools/compare_compression.go -f large.json
