@@ -62,12 +62,13 @@ func main() {
 	}
 	fmt.Printf("snappy compress %v %d bytes (%.1fx)\n", time.Since(start), len(c), float64(orig)/float64(len(c)))
 
-	res := []byte{}
-
-	start = time.Now()
-	for i := 0; i < 1e2; i++ {
-		res = expandSnappy(c)
-	}
+	func(res []byte) []byte {
+		start = time.Now()
+		for i := 0; i < 1e2; i++ {
+			res = expandSnappy(c)
+		}
+		return res
+	}([]byte{})
 	fmt.Printf("snappy expand %v\n", time.Since(start))
 
 }
