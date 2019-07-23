@@ -28,7 +28,7 @@ not be suitable for all applications. Caching should certainly be disabled for a
 resources serving very large and/or streaming responses. For instance, caching is
 automatically disabled for all websocket requests.
 
-More info in the docs: https://godoc.org/github.com/httpimp/microcache
+More info in the docs: https://godoc.org/github.com/kevburnsjr/microcache
 
 ## Example
 
@@ -42,7 +42,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/httpimp/microcache"
+	"github.com/kevburnsjr/microcache"
 )
 
 type handler struct {

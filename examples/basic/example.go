@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/httpimp/microcache"
+	"github.com/kevburnsjr/microcache"
 )
 
 type handler struct {
