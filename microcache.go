@@ -390,6 +390,9 @@ func (m *microcache) handleBackendResponse(
 
 // Start starts the monitor and any other required background processes
 func (m *microcache) Start() {
+	if m.stopMonitor != nil {
+		return
+	}
 	m.stopMonitor = make(chan bool)
 	if m.Monitor != nil {
 		go func() {

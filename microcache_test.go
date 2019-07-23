@@ -16,7 +16,6 @@ func TestTTL(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverLRU(10),
 	})
-	cache.Start()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
@@ -132,7 +131,6 @@ func TestStaleIfError(t *testing.T) {
 		QueryIgnore:  []string{"fail"},
 		Driver:       NewDriverLRU(10),
 	})
-	cache.Start()
 	handler := cache.Middleware(http.HandlerFunc(failureHandler))
 
 	// prime cache
@@ -176,7 +174,6 @@ func TestStaleWhilRevalidate(t *testing.T) {
 		Monitor:              testMonitor,
 		Driver:               NewDriverLRU(10),
 	})
-	cache.Start()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 
 	// prime cache
@@ -216,7 +213,6 @@ func TestStaleRecache(t *testing.T) {
 		QueryIgnore:  []string{"fail"},
 		Driver:       NewDriverLRU(10),
 	})
-	cache.Start()
 	handler := cache.Middleware(http.HandlerFunc(failureHandler))
 
 	// prime cache
@@ -344,7 +340,6 @@ func TestARCCache(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverARC(10),
 	})
-	cache.Start()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
@@ -361,6 +356,29 @@ func TestARCCache(t *testing.T) {
 	}
 	cache.Stop()
 }
+
+// Multiple calls to Start should not cause race conditions
+func TestMultipleStart(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+	})
+	cache.Start()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	cache.offsetIncr(30 * time.Second)
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	cache.Stop()
+}
+
 
 // --- helper funcs ---
 
