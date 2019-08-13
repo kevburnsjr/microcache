@@ -282,7 +282,27 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			}
 			m.setAgeHeader(w, obj)
 			obj.sendResponse(w)
-			go m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, true)
+
+			// Dedupe revalidation
+			m.revalidateMutex.Lock()
+			_, revalidating := m.revalidating[objHash]
+			if !revalidating {
+				m.revalidating[objHash] = true
+			}
+			m.revalidateMutex.Unlock()
+			if !revalidating {
+				go func() {
+					defer func() {
+						// Clear revalidation lock
+						m.revalidateMutex.Lock()
+						delete(m.revalidating, objHash)
+						m.revalidateMutex.Unlock()
+					}()
+
+					m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, true)
+				}()
+			}
+
 			return
 		} else {
 			m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, false)
@@ -299,27 +319,14 @@ func (m *microcache) handleBackendResponse(
 	req RequestOpts,
 	objHash string,
 	obj Response,
-	revalidate bool,
+	background bool,
 ) {
-	// Dedupe revalidation
-	if revalidate {
-		m.revalidateMutex.Lock()
-		_, revalidating := m.revalidating[objHash]
-		if !revalidating {
-			m.revalidating[objHash] = true
-		}
-		m.revalidateMutex.Unlock()
-		if revalidating {
-			return
-		}
+	if m.Monitor != nil {
+		m.Monitor.Backend()
 	}
 
 	// Backend Response
 	beres := Response{header: http.Header{}}
-
-	if m.Monitor != nil {
-		m.Monitor.Backend()
-	}
 
 	// Execute request
 	if m.Timeout > 0 {
@@ -342,7 +349,7 @@ func (m *microcache) handleBackendResponse(
 			obj.expires = obj.date.Add(m.offset).Add(req.ttl)
 			m.store(objHash, obj)
 		}
-		if !revalidate && serveStale {
+		if !background && serveStale {
 			if m.Monitor != nil {
 				m.Monitor.Stale()
 			}
@@ -371,21 +378,17 @@ func (m *microcache) handleBackendResponse(
 	}
 
 	// Don't render response during background revalidate
-	if !revalidate {
-		if m.Monitor != nil {
-			m.Monitor.Miss()
-		}
-		if m.Exposed {
-			w.Header().Set("microcache", "MISS")
-		}
-		beres.sendResponse(w)
+	if background {
 		return
 	}
 
-	// Clear revalidation lock
-	m.revalidateMutex.Lock()
-	delete(m.revalidating, objHash)
-	m.revalidateMutex.Unlock()
+	if m.Monitor != nil {
+		m.Monitor.Miss()
+	}
+	if m.Exposed {
+		w.Header().Set("microcache", "MISS")
+	}
+	beres.sendResponse(w)
 }
 
 // Start starts the monitor and any other required background processes
