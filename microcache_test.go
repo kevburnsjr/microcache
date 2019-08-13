@@ -166,43 +166,6 @@ func TestStaleIfError(t *testing.T) {
 	cache.Stop()
 }
 
-// StaleWhilRevalidate
-func TestStaleWhilRevalidate(t *testing.T) {
-	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
-	cache := New(Config{
-		TTL:                  30 * time.Second,
-		StaleWhileRevalidate: 30 * time.Second,
-		Monitor:              testMonitor,
-		Driver:               NewDriverLRU(10),
-	})
-	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
-
-	// prime cache
-	batchGet(handler, []string{
-		"/",
-		"/",
-	})
-	if testMonitor.misses != 1 || testMonitor.hits != 1 {
-		t.Log("StaleWhilRevalidate not respected - got", testMonitor.misses, "misses")
-		t.Fail()
-	}
-
-	// stale and hit after 30s
-	cache.offsetIncr(30 * time.Second)
-	batchGet(handler, []string{
-		"/",
-	})
-	time.Sleep(10 * time.Millisecond)
-	batchGet(handler, []string{
-		"/",
-	})
-	if testMonitor.stales != 1 || testMonitor.hits != 2 {
-		t.Log("StaleWhilRevalidate not respected - got", testMonitor.stales, "stales")
-		t.Fail()
-	}
-	cache.Stop()
-}
-
 // StaleRecache
 func TestStaleRecache(t *testing.T) {
 	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
