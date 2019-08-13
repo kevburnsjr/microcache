@@ -1,7 +1,7 @@
 package microcache
 
 import (
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -14,19 +14,14 @@ func MonitorFunc(interval time.Duration, logFunc func(Stats)) Monitor {
 }
 
 type monitorFunc struct {
-	interval     time.Duration
-	logFunc      func(Stats)
-	hits         int
-	hitMutex     sync.Mutex
-	misses       int
-	missMutex    sync.Mutex
-	stales       int
-	staleMutex   sync.Mutex
-	backend      int
-	backendMutex sync.Mutex
-	errors       int
-	errorMutex   sync.Mutex
-	stop         chan bool
+	interval time.Duration
+	logFunc  func(Stats)
+	hits     int64
+	misses   int64
+	stales   int64
+	backend  int64
+	errors   int64
+	stop     chan bool
 }
 
 func (m *monitorFunc) GetInterval() time.Duration {
@@ -35,65 +30,40 @@ func (m *monitorFunc) GetInterval() time.Duration {
 
 func (m *monitorFunc) Log(stats Stats) {
 	// hits
-	m.hitMutex.Lock()
-	stats.Hits = m.hits
-	m.hits = 0
-	m.hitMutex.Unlock()
+	stats.Hits = int(atomic.SwapInt64(&m.hits, 0))
 
 	// misses
-	m.missMutex.Lock()
-	stats.Misses = m.misses
-	m.misses = 0
-	m.missMutex.Unlock()
+	stats.Misses = int(atomic.SwapInt64(&m.misses, 0))
 
 	// stales
-	m.staleMutex.Lock()
-	stats.Stales = m.stales
-	m.stales = 0
-	m.staleMutex.Unlock()
+	stats.Stales = int(atomic.SwapInt64(&m.stales, 0))
 
 	// backend
-	m.backendMutex.Lock()
-	stats.Backend = m.backend
-	m.backend = 0
-	m.backendMutex.Unlock()
+	stats.Backend = int(atomic.SwapInt64(&m.backend, 0))
 
 	// errors
-	m.errorMutex.Lock()
-	stats.Errors = m.errors
-	m.errors = 0
-	m.errorMutex.Unlock()
+	stats.Errors = int(atomic.SwapInt64(&m.errors, 0))
 
 	// log
 	m.logFunc(stats)
 }
 
 func (m *monitorFunc) Hit() {
-	m.hitMutex.Lock()
-	m.hits += 1
-	m.hitMutex.Unlock()
+	atomic.AddInt64(&m.hits, 1)
 }
 
 func (m *monitorFunc) Miss() {
-	m.missMutex.Lock()
-	m.misses += 1
-	m.missMutex.Unlock()
+	atomic.AddInt64(&m.misses, 1)
 }
 
 func (m *monitorFunc) Stale() {
-	m.staleMutex.Lock()
-	m.stales += 1
-	m.staleMutex.Unlock()
+	atomic.AddInt64(&m.stales, 1)
 }
 
 func (m *monitorFunc) Backend() {
-	m.backendMutex.Lock()
-	m.backend += 1
-	m.backendMutex.Unlock()
+	atomic.AddInt64(&m.backend, 1)
 }
 
 func (m *monitorFunc) Error() {
-	m.errorMutex.Lock()
-	m.errors += 1
-	m.errorMutex.Unlock()
+	atomic.AddInt64(&m.errors, 1)
 }
