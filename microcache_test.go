@@ -1,6 +1,7 @@
 package microcache
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"sync"
@@ -379,13 +380,40 @@ func TestMultipleStart(t *testing.T) {
 	cache.Stop()
 }
 
+// Without WriteHeader
+func TestNoWriteHeader(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+	})
+	cache.Start()
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	}))
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	if testMonitor.misses != 1 || testMonitor.hits != 1 {
+		t.Log("WriteHeader not implicitly called", testMonitor.hits, "hits")
+		t.Fail()
+	}
+	cache.Stop()
+}
 
 // --- helper funcs ---
 
 func batchGet(handler http.Handler, urls []string) {
 	for _, url := range urls {
-		r1, _ := http.NewRequest("GET", url, nil)
-		handler.ServeHTTP(httptest.NewRecorder(), r1)
+		r, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+		// Same check as https://github.com/golang/go/blob/d6ffc1d8394d6f6420bb92d79d320da88720fbe0/src/net/http/server.go#L1090
+		if code := w.Code; code < 100 || code > 999 {
+			panic(fmt.Sprintf("invalid WriteHeader code %v", code))
+		}
 	}
 }
 
