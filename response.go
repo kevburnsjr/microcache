@@ -9,15 +9,19 @@ import (
 // Response is used both as a cache object for the response
 // and to wrap http.ResponseWriter for downstream requests.
 type Response struct {
-	found   bool
-	date    time.Time
-	expires time.Time
-	status  int
-	header  http.Header
-	body    []byte
+	found         bool
+	date          time.Time
+	expires       time.Time
+	status        int
+	headerWritten bool
+	header        http.Header
+	body          []byte
 }
 
 func (res *Response) Write(b []byte) (int, error) {
+	if !res.headerWritten {
+		res.WriteHeader(http.StatusOK)
+	}
 	res.body = append(res.body, b...)
 	return len(b), nil
 }
@@ -28,6 +32,7 @@ func (res *Response) Header() http.Header {
 
 func (res *Response) WriteHeader(code int) {
 	res.status = code
+	res.headerWritten = true
 }
 
 func (res *Response) sendResponse(w http.ResponseWriter) {
@@ -40,7 +45,9 @@ func (res *Response) sendResponse(w http.ResponseWriter) {
 			w.Header().Add(header, val)
 		}
 	}
-	w.WriteHeader(res.status)
+	if res.headerWritten {
+		w.WriteHeader(res.status)
+	}
 	w.Write(res.body)
 	return
 }
