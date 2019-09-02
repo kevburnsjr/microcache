@@ -414,7 +414,7 @@ func (m *microcache) Start() {
 func (m *microcache) setAgeHeader(w http.ResponseWriter, obj Response) {
 	if !m.SuppressAgeHeader {
 		age := (time.Now().Add(m.offset).Unix() - obj.date.Unix())
-		obj.Header().Set("age", fmt.Sprintf("%d", age))
+		w.Header().Set("age", fmt.Sprintf("%d", age))
 	}
 }
 
@@ -428,7 +428,6 @@ func (m *microcache) store(objHash string, obj Response) {
 		m.Driver.Set(objHash, obj)
 	}
 }
-
 
 // Stop stops the monitor and any other required background processes
 func (m *microcache) Stop() {
