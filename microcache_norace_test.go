@@ -8,8 +8,8 @@ import (
 	"time"
 )
 
-// StaleWhilRevalidate
-func TestStaleWhilRevalidate(t *testing.T) {
+// StaleWhileRevalidate
+func TestStaleWhileRevalidate(t *testing.T) {
 	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
 	cache := New(Config{
 		TTL:                  30 * time.Second,
@@ -25,7 +25,7 @@ func TestStaleWhilRevalidate(t *testing.T) {
 		"/",
 	})
 	if testMonitor.misses != 1 || testMonitor.hits != 1 {
-		t.Log("StaleWhilRevalidate not respected - got", testMonitor.misses, "misses")
+		t.Log("StaleWhileRevalidate not respected - got", testMonitor.misses, "misses")
 		t.Fail()
 	}
 
@@ -39,7 +39,7 @@ func TestStaleWhilRevalidate(t *testing.T) {
 		"/",
 	})
 	if testMonitor.stales != 1 || testMonitor.hits != 2 {
-		t.Log("StaleWhilRevalidate not respected - got", testMonitor.stales, "stales")
+		t.Log("StaleWhileRevalidate not respected - got", testMonitor.stales, "stales")
 		t.Fail()
 	}
 	cache.Stop()
