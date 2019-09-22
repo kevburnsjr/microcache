@@ -2,8 +2,6 @@ package microcache
 
 import (
 	"crypto/sha1"
-	"encoding/base64"
-	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -11,7 +9,8 @@ import (
 )
 
 func getRequestHash(m *microcache, r *http.Request) string {
-	reqHash := r.URL.Path
+	h := sha1.New()
+	h.Write([]byte(r.URL.Path))
 	if m.HashQuery {
 		if m.QueryIgnore != nil {
 			for key, values := range r.URL.Query() {
@@ -19,19 +18,17 @@ func getRequestHash(m *microcache, r *http.Request) string {
 					continue
 				}
 				for _, value := range values {
-					reqHash = reqHash + "&" + key + "=" + value
+					h.Write([]byte("&" + key + "=" + value))
 				}
 			}
 		} else {
-			reqHash = reqHash + r.URL.RawQuery
+			h.Write([]byte(r.URL.RawQuery))
 		}
 	}
 	for _, header := range m.Vary {
-		reqHash = reqHash + header + r.Header.Get(header)
+		h.Write([]byte(header + r.Header.Get(header)))
 	}
-	h := sha1.New()
-	io.WriteString(h, reqHash)
-	return base64.StdEncoding.EncodeToString(h.Sum(nil))
+	return string(h.Sum(nil))
 }
 
 // RequestOpts stores per-request cache options. This is necessary to allow
@@ -50,21 +47,22 @@ type RequestOpts struct {
 }
 
 func (req *RequestOpts) getObjectHash(reqHash string, r *http.Request) string {
-	objHash := reqHash
+	h := sha1.New()
+	h.Write([]byte(reqHash))
 	for _, header := range req.vary {
-		objHash = objHash + "&" + header + ": " + r.Header.Get(header)
+		h.Write([]byte("&" + header + ":" + r.Header.Get(header)))
 	}
 	if len(req.varyQuery) > 0 {
 		queryParams := r.URL.Query()
 		for _, param := range req.varyQuery {
 			if vals, ok := queryParams[param]; ok {
 				for _, val := range vals {
-					objHash = objHash + "&" + param + "=" + val
+					h.Write([]byte("&" + param + "=" + val))
 				}
 			}
 		}
 	}
-	return objHash
+	return string(h.Sum(nil))
 }
 
 func buildRequestOpts(m *microcache, res Response, r *http.Request) RequestOpts {
