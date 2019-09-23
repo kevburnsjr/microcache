@@ -1,16 +1,21 @@
-**microcache** is a non-standard HTTP cache implemented as Go middleware.
+# Microcache
+
+A non-standard HTTP cache implemented as Go middleware.
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/kevburnsjr/microcache?1)](https://goreportcard.com/report/github.com/kevburnsjr/microcache)
+[![GoDoc](https://godoc.org/github.com/kevburnsjr/microcache?status.svg)](https://godoc.org/github.com/kevburnsjr/microcache)
 
 HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
-is a well known strategy for improving the efficiency, availability and
+is a common strategy for improving the efficiency, availability and
 response time variability of HTTP web services. These benefits are especially relevant
 in microservice architectures where a service's synchronous dependencies sometimes
 become unavailable and it is not always feasible or economical to add a separate
 caching layer between all services.
 
 To date, very few software packages exist to solve this specific problem. Most
-microcache deployments make use of existing HTTP caching middleware. This presents
-a challenge. When an HTTP cache exists for the purpose of microcaching between an
-origin server and a CDN, the server must choose whether to use standard HTTP caching
+microcache deployments make use of existing HTTP caching middleware like NIGNX. This
+presents a challenge. When an HTTP cache exists for the purpose of microcaching between
+an origin server and a CDN, the origin must choose whether to use standard HTTP caching
 headers with aggressive short TTLs for the microcache or less aggressive longer TTL
 headers more suitable to CDNs. The overlap in HTTP header key space prevents these two
 cache layers from coexisting without some additional customization.
@@ -80,66 +85,6 @@ func logStats(stats microcache.Stats) {
 }
 
 func main() {
-	// - Nocache: true
-	// Cache is disabled for all requests by default
-	// Cache can be enabled per request hash with response header
-	//
-	//     microcache-cache: 1
-	//
-	// - Timeout: 3 * time.Second
-	// Requests will be timed out and treated as 503 if they do not return within 35s
-	//
-	// - TTL: 30 * time.Second
-	// Responses which enable cache explicitly will be cached for 30s by default
-	// Response cache time can be configured per endpoint with response header
-	//
-	//     microcache-ttl: 30
-	//
-	// - StaleIfError: 3600 * time.Second
-	// If the request encounters an error (or times out), a stale response will be returned
-	// provided that the stale cached response expired less than an hour ago.
-	// Can be altered per request with response header
-	// More Info: https://tools.ietf.org/html/rfc5861
-	//
-	//     microcache-stale-if-error: 86400
-	//
-	// - StaleRecache: true
-	// Upon serving a stale response following an error, that stale response will be
-	// re-cached for the default ttl (3s)
-	// Can be disabled per request with response header
-	//
-	//     microcache-no-stale-recache: 1
-	//
-	// - StaleWhileRevalidate: 30 * time.Second
-	// If the cache encounters a request for a cached object that has expired in the
-	// last 30s, the cache will reply immediately with a stale response and fetch
-	// the resource in a background process.
-	// More Info: https://tools.ietf.org/html/rfc5861
-	//
-	//     microcache-stale-while-revalidate: 20
-	//
-	// - HashQuery: true
-	// All query parameters are included in the request hash
-	//
-	// - QueryIgnore: []string{}
-	// A list of query parameters to ignore when hashing the request
-	// Add oauth parameters or other unwanted cache busters to this list
-	//
-	// - Exposed: true
-	// Header will be appended to response indicating HIT / MISS / STALE
-	//
-	//     microcache: ( HIT | MISS | STALE )
-	//
-	// - SuppressAgeHeader: false
-	// Age is a standard HTTP header indicating the age of the cached object in seconds
-	// The Age header is added by default to all HIT and MISS responses
-	// This parameter prevents the Age header from being set
-	//
-	//     Age: ( seconds )
-	//
-	// - Monitor: microcache.MonitorFunc(5 * time.Second, logStats)
-	// LogStats will be called every 5s to log stats about the cache
-	//
 	cache := microcache.New(microcache.Config{
 		Nocache:              true,
 		Timeout:              3 * time.Second,
@@ -185,16 +130,15 @@ Supports content negotiation with global and request specific cache splintering
 * **vary** - splinter requests by request header value
 * **vary-query** - splinter requests by URL query parameter value
 
-## Release
+## Control Flow Diagram
 
-Tests have been written to confirm the correct behavior of this cache.
+This diagram illustrates the basic internal operation of the middleware.
 
-At least one large scale deploy of this library is currently underway in an API serving 20,000
-requests per minute at peak. Results pending.
+![microcache-architecture.svg](docs/microcache-architecture.svg)
 
 ## Compression
 
-A Snappy driver has been added for projects who want to trade CPU for memory over gzip
+The Snappy compressor is recommended to optimize for CPU over memory efficiency compared with gzip
 
 [Snappy](https://github.com/golang/snappy) provides:
 
@@ -251,6 +195,13 @@ Read throughput:                1109430818 bytes/sec
 Write throughput:                   896791 bytes/sec
 Test time:                              10 sec
 ```
+
+## Release
+
+Tests have been written to confirm the correct behavior of this cache.
+
+At least one large scale deployment of this library has been running in production
+on a high volume internet facing API at an Alexa Top 500 global website for over a year.
 
 ## Notes
 
