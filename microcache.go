@@ -393,24 +393,22 @@ func (m *microcache) handleBackendResponse(
 
 // Start starts the monitor and any other required background processes
 func (m *microcache) Start() {
-	if m.stopMonitor != nil {
+	if m.stopMonitor != nil || m.Monitor == nil {
 		return
 	}
 	m.stopMonitor = make(chan bool)
-	if m.Monitor != nil {
-		go func() {
-			for {
-				select {
-				case <-time.After(m.Monitor.GetInterval()):
-					m.Monitor.Log(Stats{
-						Size: m.Driver.GetSize(),
-					})
-				case <-m.stopMonitor:
-					return
-				}
+	go func() {
+		for {
+			select {
+			case <-time.After(m.Monitor.GetInterval()):
+				m.Monitor.Log(Stats{
+					Size: m.Driver.GetSize(),
+				})
+			case <-m.stopMonitor:
+				return
 			}
-		}()
-	}
+		}
+	}()
 }
 
 // setAgeHeader sets the age header if not suppressed
@@ -434,6 +432,9 @@ func (m *microcache) store(objHash string, obj Response) {
 
 // Stop stops the monitor and any other required background processes
 func (m *microcache) Stop() {
+	if m.stopMonitor == nil {
+		return
+	}
 	m.stopMonitor <- true
 }
 

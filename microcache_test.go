@@ -351,7 +351,6 @@ func TestNoWriteHeader(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverLRU(10),
 	})
-	cache.Start()
 	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	}))
@@ -364,6 +363,23 @@ func TestNoWriteHeader(t *testing.T) {
 		t.Fail()
 	}
 	cache.Stop()
+}
+
+// Stop
+func TestStop(t *testing.T) {
+	cache := New(Config{})
+	done := make(chan bool)
+	go func() {
+		cache.Stop()
+		done <- true
+	}()
+	select {
+	case <-time.After(100 * time.Millisecond):
+		t.Log("Middleware failed to stop")
+		t.Fail()
+	case <-done:
+		return
+	}
 }
 
 // --- helper funcs ---
