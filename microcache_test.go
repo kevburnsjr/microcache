@@ -375,8 +375,7 @@ func TestStop(t *testing.T) {
 	}()
 	select {
 	case <-time.After(100 * time.Millisecond):
-		t.Log("Middleware failed to stop")
-		t.Fail()
+		t.Fatal("Middleware failed to stop")
 	case <-done:
 		return
 	}
