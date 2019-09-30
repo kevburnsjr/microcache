@@ -101,6 +101,7 @@ func main() {
 		Driver:               microcache.NewDriverLRU(1e4),
 		Compressor:           microcache.CompressorSnappy{},
 	})
+	defer cache.Stop()
 
 	h := cache.Middleware(handler{})
 

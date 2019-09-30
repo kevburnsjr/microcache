@@ -17,6 +17,7 @@ func TestTTL(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
@@ -27,11 +28,9 @@ func TestTTL(t *testing.T) {
 		"/",
 		"/",
 	})
-	if testMonitor.misses != 2 || testMonitor.hits != 2 {
-		t.Log("TTL not respected - got", testMonitor.hits, "hits")
-		t.Fail()
+	if testMonitor.getMisses() != 2 || testMonitor.getHits() != 2 {
+		t.Fatal("TTL not respected - got", testMonitor.getHits(), "hits")
 	}
-	cache.Stop()
 }
 
 // HashQuery
@@ -43,16 +42,15 @@ func TestHashQuery(t *testing.T) {
 		Monitor:   testMonitor,
 		Driver:    NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
 		"/?a=1",
 	})
-	if testMonitor.misses != 2 {
-		t.Log("HashQuery not respected - got", testMonitor.misses, "misses")
-		t.Fail()
+	if testMonitor.getMisses() != 2 {
+		t.Fatal("HashQuery not respected - got", testMonitor.getMisses(), "misses")
 	}
-	cache.Stop()
 }
 
 // HashQuery Disabled
@@ -64,16 +62,15 @@ func TestHashQueryDisabled(t *testing.T) {
 		Monitor:   testMonitor,
 		Driver:    NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
 		"/?a=1",
 	})
-	if testMonitor.misses != 1 {
-		t.Log("HashQuery not ignored - got", testMonitor.misses, "misses")
-		t.Fail()
+	if testMonitor.getMisses() != 1 {
+		t.Fatal("HashQuery not ignored - got", testMonitor.getMisses(), "misses")
 	}
-	cache.Stop()
 }
 
 // QueryIgnore should be respected when HashQuery is true
@@ -86,17 +83,16 @@ func TestQueryIgnore(t *testing.T) {
 		Monitor:     testMonitor,
 		Driver:      NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
 		"/?a=1",
 		"/?a=2",
 	})
-	if testMonitor.misses != 1 || testMonitor.hits != 2 {
-		t.Log("Query parameters not ignored - got", testMonitor.misses, "misses")
-		t.Fail()
+	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 2 {
+		t.Fatal("Query parameters not ignored - got", testMonitor.getMisses(), "misses")
 	}
-	cache.Stop()
 }
 
 // QueryIgnore should be disregarded when HashQuery is false
@@ -109,17 +105,86 @@ func TestQueryIgnoreDisabled(t *testing.T) {
 		Monitor:     testMonitor,
 		Driver:      NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
 		"/?a=1",
 		"/?b=2",
 	})
-	if testMonitor.misses != 1 {
-		t.Log("Query parameters ignored - got", testMonitor.misses, "misses")
-		t.Fail()
+	if testMonitor.getMisses() != 1 {
+		t.Fatal("Query parameters ignored - got", testMonitor.getMisses(), "misses")
 	}
-	cache.Stop()
+}
+
+// StaleWhileRevalidate
+func TestStaleWhileRevalidate(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:                  30 * time.Second,
+		StaleWhileRevalidate: 30 * time.Second,
+		Monitor:              testMonitor,
+		Driver:               NewDriverLRU(10),
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+
+	// prime cache
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 1 {
+		t.Fatal("StaleWhileRevalidate not respected - got", testMonitor.getMisses(), "misses")
+	}
+
+	// stale and hit after 30s
+	cache.offsetIncr(30 * time.Second)
+	batchGet(handler, []string{
+		"/",
+	})
+	time.Sleep(10 * time.Millisecond)
+	batchGet(handler, []string{
+		"/",
+	})
+	if testMonitor.getStales() != 1 || testMonitor.getHits() != 2 {
+		t.Fatal("StaleWhileRevalidate not respected - got", testMonitor.getStales(), "stales")
+	}
+}
+
+// CollapsedFowarding and StaleWhileRevalidate
+func TestCollapsedFowardingStaleWhileRevalidate(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:                  30 * time.Second,
+		CollapsedForwarding:  true,
+		StaleWhileRevalidate: 30 * time.Second,
+		Monitor:              testMonitor,
+		Driver:               NewDriverLRU(10),
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(timelySuccessHandler))
+	batchGet(handler, []string{
+		"/",
+	})
+	cache.offsetIncr(31 * time.Second)
+	start := time.Now()
+	parallelGet(handler, []string{
+		"/",
+		"/",
+		"/",
+		"/",
+		"/",
+		"/",
+	})
+	end := time.Since(start)
+	// Sleep for a little bit to give the StaleWhileRevalidate goroutines some time to start.
+	time.Sleep(time.Millisecond * 10)
+	if testMonitor.getMisses() != 1 || testMonitor.getStales() != 6 ||
+		testMonitor.getBackends() != 2 || end > 20*time.Millisecond {
+		t.Logf("%#v", testMonitor)
+		t.Fatal("CollapsedFowarding and StaleWhileRevalidate not respected - got", testMonitor.getBackends(), "backend")
+	}
 }
 
 // StaleIfError
@@ -132,6 +197,7 @@ func TestStaleIfError(t *testing.T) {
 		QueryIgnore:  []string{"fail"},
 		Driver:       NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(failureHandler))
 
 	// prime cache
@@ -139,9 +205,8 @@ func TestStaleIfError(t *testing.T) {
 		"/",
 		"/",
 	})
-	if testMonitor.misses != 1 || testMonitor.hits != 1 {
-		t.Log("StaleIfError not respected - got", testMonitor.misses, "misses")
-		t.Fail()
+	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 1 {
+		t.Fatal("StaleIfError not respected - got", testMonitor.getMisses(), "misses")
 	}
 
 	// stale after 30s
@@ -149,9 +214,8 @@ func TestStaleIfError(t *testing.T) {
 	batchGet(handler, []string{
 		"/?fail=1",
 	})
-	if testMonitor.stales != 1 {
-		t.Log("StaleIfError not respected - got", testMonitor.stales, "stales")
-		t.Fail()
+	if testMonitor.getStales() != 1 {
+		t.Fatal("StaleIfError not respected - got", testMonitor.getStales(), "stales")
 	}
 
 	// error after 600s
@@ -159,11 +223,9 @@ func TestStaleIfError(t *testing.T) {
 	batchGet(handler, []string{
 		"/?fail=1",
 	})
-	if testMonitor.errors != 2 || testMonitor.stales != 1 {
-		t.Log("StaleIfError not respected - got", testMonitor.errors, "errors")
-		t.Fail()
+	if testMonitor.getErrors() != 2 || testMonitor.getStales() != 1 {
+		t.Fatal("StaleIfError not respected - got", testMonitor.getErrors(), "errors")
 	}
-	cache.Stop()
 }
 
 // StaleRecache
@@ -177,6 +239,8 @@ func TestStaleRecache(t *testing.T) {
 		QueryIgnore:  []string{"fail"},
 		Driver:       NewDriverLRU(10),
 	})
+	defer cache.Stop()
+
 	handler := cache.Middleware(http.HandlerFunc(failureHandler))
 
 	// prime cache
@@ -184,9 +248,8 @@ func TestStaleRecache(t *testing.T) {
 		"/",
 		"/",
 	})
-	if testMonitor.misses != 1 || testMonitor.hits != 1 {
-		t.Log("StaleRecache not respected - got", testMonitor.misses, "misses")
-		t.Fail()
+	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 1 {
+		t.Fatal("StaleRecache not respected - got", testMonitor.getMisses(), "misses")
 	}
 
 	// stale after 30s
@@ -194,20 +257,17 @@ func TestStaleRecache(t *testing.T) {
 	batchGet(handler, []string{
 		"/?fail=1",
 	})
-	if testMonitor.stales != 1 {
-		t.Log("StaleIfError not respected - got", testMonitor.stales, "stales")
-		t.Fail()
+	if testMonitor.getStales() != 1 {
+		t.Fatal("StaleIfError not respected - got", testMonitor.getStales(), "stales")
 	}
 
 	// hit when stale is recached
 	batchGet(handler, []string{
 		"/?fail=1",
 	})
-	if testMonitor.hits != 2 {
-		t.Log("StaleRecache not respected - got", testMonitor.errors, "errors")
-		t.Fail()
+	if testMonitor.getHits() != 2 {
+		t.Fatal("StaleRecache not respected - got", testMonitor.getErrors(), "errors")
 	}
-	cache.Stop()
 }
 
 // Timeout
@@ -219,16 +279,15 @@ func TestTimeout(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(slowSuccessHandler))
 	start := time.Now()
 	batchGet(handler, []string{
 		"/",
 	})
-	if testMonitor.errors != 1 || time.Since(start) > 20*time.Millisecond {
-		t.Log("Timeout not respected - got", testMonitor.errors, "errors")
-		t.Fail()
+	if testMonitor.getErrors() != 1 || time.Since(start) > 20*time.Millisecond {
+		t.Fatal("Timeout not respected - got", testMonitor.getErrors(), "errors")
 	}
-	cache.Stop()
 }
 
 // CollapsedFowarding
@@ -240,6 +299,7 @@ func TestCollapsedFowarding(t *testing.T) {
 		Monitor:             testMonitor,
 		Driver:              NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(timelySuccessHandler))
 	start := time.Now()
 	parallelGet(handler, []string{
@@ -250,11 +310,9 @@ func TestCollapsedFowarding(t *testing.T) {
 		"/",
 		"/",
 	})
-	if testMonitor.misses != 1 || testMonitor.hits != 5 || time.Since(start) > 20*time.Millisecond {
-		t.Log("CollapsedFowarding not respected - got", testMonitor.hits, "hits")
-		t.Fail()
+	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 5 || time.Since(start) > 20*time.Millisecond {
+		t.Fatal("CollapsedFowarding not respected - got", testMonitor.getHits(), "hits")
 	}
-	cache.Stop()
 }
 
 // SuppressAgeHeader
@@ -266,6 +324,7 @@ func TestAgeHeader(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
@@ -273,27 +332,28 @@ func TestAgeHeader(t *testing.T) {
 	cache.offsetIncr(20 * time.Second)
 	w := getResponse(handler, "/")
 	if w.Header().Get("age") != "20" {
-		t.Log("Age header was not correct \"", w.Header().Get("age"), "\" != 20")
-		t.Fail()
+		t.Fatal("Age header was not correct \"", w.Header().Get("age"), "\" != 20")
 	}
-	cache.Stop()
-	// Age header can be suppressed
-	cache = New(Config{
+}
+
+// SuppressAgeHeaderSuppression
+func TestAgeHeaderSuppression(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
 		TTL:               30 * time.Second,
 		SuppressAgeHeader: true,
 		Monitor:           testMonitor,
 		Driver:            NewDriverLRU(10),
 	})
-	handler = cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
 	})
-	w = getResponse(handler, "/")
+	w := getResponse(handler, "/")
 	if w.Header().Get("age") != "" {
-		t.Log("Age header was added when it should be empty")
-		t.Fail()
+		t.Fatal("Age header was added when it should be empty")
 	}
-	cache.Stop()
 }
 
 // ARCCache should work as expected
@@ -304,6 +364,7 @@ func TestARCCache(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverARC(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
 		"/",
@@ -314,11 +375,9 @@ func TestARCCache(t *testing.T) {
 		"/",
 		"/",
 	})
-	if testMonitor.misses != 2 || testMonitor.hits != 2 {
-		t.Log("TTL not respected by ARC - got", testMonitor.hits, "hits")
-		t.Fail()
+	if testMonitor.getMisses() != 2 || testMonitor.getHits() != 2 {
+		t.Fatal("TTL not respected by ARC - got", testMonitor.getHits(), "hits")
 	}
-	cache.Stop()
 }
 
 // Multiple calls to Start should not cause race conditions
@@ -329,6 +388,7 @@ func TestMultipleStart(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	cache.Start()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{
@@ -340,7 +400,6 @@ func TestMultipleStart(t *testing.T) {
 		"/",
 		"/",
 	})
-	cache.Stop()
 }
 
 // Without WriteHeader
@@ -351,6 +410,7 @@ func TestNoWriteHeader(t *testing.T) {
 		Monitor: testMonitor,
 		Driver:  NewDriverLRU(10),
 	})
+	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok"))
 	}))
@@ -358,11 +418,9 @@ func TestNoWriteHeader(t *testing.T) {
 		"/",
 		"/",
 	})
-	if testMonitor.misses != 1 || testMonitor.hits != 1 {
-		t.Log("WriteHeader not implicitly called", testMonitor.hits, "hits")
-		t.Fail()
+	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 1 {
+		t.Fatal("WriteHeader not implicitly called", testMonitor.getHits(), "hits")
 	}
-	cache.Stop()
 }
 
 // Stop

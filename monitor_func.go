@@ -67,3 +67,23 @@ func (m *monitorFunc) Backend() {
 func (m *monitorFunc) Error() {
 	atomic.AddInt64(&m.errors, 1)
 }
+
+func (m *monitorFunc) getHits() int {
+	return int(atomic.LoadInt64(&m.hits))
+}
+
+func (m *monitorFunc) getMisses() int {
+	return int(atomic.LoadInt64(&m.misses))
+}
+
+func (m *monitorFunc) getStales() int {
+	return int(atomic.LoadInt64(&m.stales))
+}
+
+func (m *monitorFunc) getBackends() int {
+	return int(atomic.LoadInt64(&m.backend))
+}
+
+func (m *monitorFunc) getErrors() int {
+	return int(atomic.LoadInt64(&m.errors))
+}
