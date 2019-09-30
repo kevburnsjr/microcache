@@ -2,8 +2,9 @@
 
 A non-standard HTTP cache implemented as Go middleware.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/kevburnsjr/microcache?1)](https://goreportcard.com/report/github.com/kevburnsjr/microcache)
 [![GoDoc](https://godoc.org/github.com/kevburnsjr/microcache?status.svg)](https://godoc.org/github.com/kevburnsjr/microcache)
+[![Go Report Card](https://goreportcard.com/badge/github.com/kevburnsjr/microcache?1)](https://goreportcard.com/report/github.com/kevburnsjr/microcache)
+[![Code Coverage](http://gocover.io/_badge/github.com/kevburnsjr/microcache)](http://gocover.io/github.com/kevburnsjr/microcache)
 
 HTTP [Microcaching](https://www.nginx.com/blog/benefits-of-microcaching-nginx/)
 is a common strategy for improving the efficiency, availability and
