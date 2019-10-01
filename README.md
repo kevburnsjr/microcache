@@ -198,9 +198,9 @@ Write throughput:                   896791 bytes/sec
 Test time:                              10 sec
 ```
 
-## Release
+## Release Status
 
-Tests have been written to confirm the correct behavior of this cache.
+API is stable. 100% test coverage.
 
 At least one large scale deployment of this library has been running in production
 on a high volume internet facing API at an Alexa Top 500 global website for over a year.
