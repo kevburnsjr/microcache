@@ -427,7 +427,11 @@ func TestNoWriteHeader(t *testing.T) {
 
 // Websocket should pass through
 func TestWebsocketPassthrough(t *testing.T) {
-	cache := New(Config{Driver: NewDriverLRU(10)})
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		Driver:  NewDriverLRU(10),
+		Monitor: testMonitor,
+	})
 	defer cache.Stop()
 	var resSubstitutionOccurred bool
 	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -439,7 +443,6 @@ func TestWebsocketPassthrough(t *testing.T) {
 	if !resSubstitutionOccurred {
 		t.Fatal("Response substitution should have occurred")
 	}
-
 	r, _ := http.NewRequest("GET", "/", nil)
 	r.Header.Set("connection", "upgrade")
 	w := httptest.NewRecorder()
@@ -447,11 +450,18 @@ func TestWebsocketPassthrough(t *testing.T) {
 	if resSubstitutionOccurred {
 		t.Fatal("Response substitution should not have occurred")
 	}
+	if testMonitor.getMisses() != 2 {
+		t.Fatal("Websocket passthrough should count as miss")
+	}
 }
 
 // Nocache should pass through when triggered by header
 func TestNocacheHeader(t *testing.T) {
-	cache := New(Config{Driver: NewDriverLRU(10)})
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		Driver:  NewDriverLRU(10),
+		Monitor: testMonitor,
+	})
 	defer cache.Stop()
 	var resSubstitutionOccurred bool
 	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -465,6 +475,9 @@ func TestNocacheHeader(t *testing.T) {
 	batchGet(handler, []string{"/"})
 	if resSubstitutionOccurred {
 		t.Fatal("Response substitution should not have occurred")
+	}
+	if testMonitor.getMisses() != 2 {
+		t.Fatal("Nocache should count as miss")
 	}
 }
 
