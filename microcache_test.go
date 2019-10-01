@@ -534,6 +534,35 @@ func TestVary(t *testing.T) {
 	}
 }
 
+// Unsafe requests should miss
+func TestUnsafe(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	cases := []struct {
+		url    string
+		method string
+		hit    bool
+	}{
+		{"/", "POST", false},
+	}
+	for i, c := range cases {
+		r := getResponseWithMethod(handler, c.url, c.method)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
+	}
+	if testMonitor.getMisses() != 1 {
+		t.Fatal("Unsafe methods should cause miss")
+	}
+}
+
 // Unsafe requests should miss and purge objects
 func TestUnsafePurge(t *testing.T) {
 	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
@@ -553,6 +582,15 @@ func TestUnsafePurge(t *testing.T) {
 		{"/", "GET", false},
 		{"/", "GET", true},
 		{"/", "POST", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "PUT", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "DELETE", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "PATCH", false},
 		{"/", "GET", false},
 		{"/", "GET", true},
 	}
