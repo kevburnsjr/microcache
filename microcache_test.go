@@ -536,6 +536,39 @@ func TestVary(t *testing.T) {
 	}
 }
 
+// Vary Query operates as expected
+func TestVaryQuery(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Microcache-Vary-Query", "foo")
+	}))
+	cases := []struct {
+		url string
+		hit bool
+	}{
+		{"/?foo=1", false},
+		{"/?foo=1", true},
+		{"/?foo=2", false},
+		{"/?foo=2", true},
+		{"/", false},
+		{"/?bar=1", true},
+		{"/?baz=2", true},
+	}
+	for i, c := range cases {
+		r := getResponse(handler, c.url)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
+	}
+}
+
 // Unsafe requests should miss
 func TestUnsafe(t *testing.T) {
 	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
