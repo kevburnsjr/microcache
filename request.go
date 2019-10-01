@@ -11,6 +11,9 @@ import (
 func getRequestHash(m *microcache, r *http.Request) string {
 	h := sha1.New()
 	h.Write([]byte(r.URL.Path))
+	for _, header := range m.Vary {
+		h.Write([]byte("&" + header + ":" + r.Header.Get(header)))
+	}
 	if m.HashQuery {
 		if m.QueryIgnore != nil {
 			for key, values := range r.URL.Query() {
@@ -24,9 +27,6 @@ func getRequestHash(m *microcache, r *http.Request) string {
 		} else {
 			h.Write([]byte(r.URL.RawQuery))
 		}
-	}
-	for _, header := range m.Vary {
-		h.Write([]byte(header + r.Header.Get(header)))
 	}
 	return string(h.Sum(nil))
 }

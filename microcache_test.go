@@ -437,6 +437,7 @@ func TestWebsocketPassthrough(t *testing.T) {
 	if !resSubstitutionOccurred {
 		t.Fatal("Response substitution should have occurred")
 	}
+
 	r, _ := http.NewRequest("GET", "/", nil)
 	r.Header.Set("connection", "upgrade")
 	w := httptest.NewRecorder()
@@ -490,6 +491,49 @@ func TestCompressorTTL(t *testing.T) {
 	}
 }
 
+// Vary operates as expected
+func TestVary(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Vary:    []string{"foo"},
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "bar")
+		w.Header().Set("Microcache-Vary", "baz")
+	}))
+	cases := []struct {
+		url string
+		hdr map[string]string
+		hit bool
+	}{
+		{"/", map[string]string{"foo": "1"}, false},
+		{"/", map[string]string{"foo": "1"}, true},
+		{"/", map[string]string{"foo": "1", "bar": "1"}, false},
+		{"/", map[string]string{"foo": "1", "bar": "1"}, true},
+		{"/", map[string]string{"foo": "1", "bar": "2"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2"}, true},
+		{"/", map[string]string{"foo": "1", "bar": "2", "baz": "1"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2", "baz": "1"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2", "baz": "1"}, true},
+	}
+	for i, c := range cases {
+		h := http.Header{}
+		for k, v := range c.hdr {
+			h.Set(k, v)
+		}
+		r := getResponseWithHeader(handler, c.url, h)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i)
+		}
+	}
+}
+
 // Stop
 func TestStop(t *testing.T) {
 	cache := New(Config{})
@@ -535,6 +579,14 @@ func parallelGet(handler http.Handler, urls []string) {
 
 func getResponse(handler http.Handler, url string) *httptest.ResponseRecorder {
 	r, _ := http.NewRequest("GET", url, nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	return w
+}
+
+func getResponseWithHeader(handler http.Handler, url string, h http.Header) *httptest.ResponseRecorder {
+	r, _ := http.NewRequest("GET", url, nil)
+	r.Header = h
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 	return w
