@@ -423,6 +423,29 @@ func TestNoWriteHeader(t *testing.T) {
 	}
 }
 
+// Websocket should pass through
+func TestWebsocketPassthrough(t *testing.T) {
+	cache := New(Config{Driver: NewDriverLRU(10)})
+	defer cache.Stop()
+	var resSubstitutionOccurred bool
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, resSubstitutionOccurred = w.(*Response)
+	}))
+	batchGet(handler, []string{
+		"/",
+	})
+	if !resSubstitutionOccurred {
+		t.Fatal("Response substitution should have occurred")
+	}
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.Header.Set("connection", "upgrade")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	if resSubstitutionOccurred {
+		t.Fatal("Response substitution should not have occurred")
+	}
+}
+
 // Stop
 func TestStop(t *testing.T) {
 	cache := New(Config{})
