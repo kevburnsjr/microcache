@@ -34,7 +34,7 @@ func TestMicrocacheCallsMonitor(t *testing.T) {
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 	batchGet(handler, []string{"/"})
-	size := <- statChan
+	size := <-statChan
 	if size != 1 {
 		t.Fatal("Monitor was not called by microcache")
 	}

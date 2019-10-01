@@ -73,25 +73,33 @@ func TestHashQueryDisabled(t *testing.T) {
 	}
 }
 
-// QueryIgnore should be respected when HashQuery is true
+// Query Ignore operates as expected
 func TestQueryIgnore(t *testing.T) {
-	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
 	cache := New(Config{
 		TTL:         30 * time.Second,
 		HashQuery:   true,
 		QueryIgnore: []string{"a"},
-		Monitor:     testMonitor,
 		Driver:      NewDriverLRU(10),
+		Exposed:     true,
 	})
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
-	batchGet(handler, []string{
-		"/",
-		"/?a=1",
-		"/?a=2",
-	})
-	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 2 {
-		t.Fatal("Query parameters not ignored - got", testMonitor.getMisses(), "misses")
+	cases := []struct {
+		url string
+		hit bool
+	}{
+		{"/", false},
+		{"/?a=1", true},
+		{"/?foo=1", false},
+		{"/?foo=1", true},
+		{"/?foo=1&a=1", true},
+		{"/?foo=1&b=1", false},
+	}
+	for i, c := range cases {
+		r := getResponse(handler, c.url)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
 	}
 }
 
