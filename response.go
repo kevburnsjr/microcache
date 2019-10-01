@@ -19,9 +19,6 @@ type Response struct {
 }
 
 func (res *Response) Write(b []byte) (int, error) {
-	if !res.headerWritten {
-		res.WriteHeader(http.StatusOK)
-	}
 	res.body = append(res.body, b...)
 	return len(b), nil
 }
@@ -68,7 +65,7 @@ type passthroughWriter struct {
 	status int
 }
 
-func (w passthroughWriter) WriteHeader(code int) {
+func (w *passthroughWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
 }

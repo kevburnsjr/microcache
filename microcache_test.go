@@ -73,25 +73,33 @@ func TestHashQueryDisabled(t *testing.T) {
 	}
 }
 
-// QueryIgnore should be respected when HashQuery is true
+// Query Ignore operates as expected
 func TestQueryIgnore(t *testing.T) {
-	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
 	cache := New(Config{
 		TTL:         30 * time.Second,
 		HashQuery:   true,
 		QueryIgnore: []string{"a"},
-		Monitor:     testMonitor,
 		Driver:      NewDriverLRU(10),
+		Exposed:     true,
 	})
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
-	batchGet(handler, []string{
-		"/",
-		"/?a=1",
-		"/?a=2",
-	})
-	if testMonitor.getMisses() != 1 || testMonitor.getHits() != 2 {
-		t.Fatal("Query parameters not ignored - got", testMonitor.getMisses(), "misses")
+	cases := []struct {
+		url string
+		hit bool
+	}{
+		{"/", false},
+		{"/?a=1", true},
+		{"/?foo=1", false},
+		{"/?foo=1", true},
+		{"/?foo=1&a=1", true},
+		{"/?foo=1&b=1", false},
+	}
+	for i, c := range cases {
+		r := getResponse(handler, c.url)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
 	}
 }
 
@@ -125,6 +133,7 @@ func TestStaleWhileRevalidate(t *testing.T) {
 		StaleWhileRevalidate: 30 * time.Second,
 		Monitor:              testMonitor,
 		Driver:               NewDriverLRU(10),
+		Exposed:              true,
 	})
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
@@ -196,6 +205,7 @@ func TestStaleIfError(t *testing.T) {
 		Monitor:      testMonitor,
 		QueryIgnore:  []string{"fail"},
 		Driver:       NewDriverLRU(10),
+		Exposed:      true,
 	})
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(failureHandler))
@@ -423,6 +433,231 @@ func TestNoWriteHeader(t *testing.T) {
 	}
 }
 
+// Websocket should pass through
+func TestWebsocketPassthrough(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		Driver:  NewDriverLRU(10),
+		Monitor: testMonitor,
+	})
+	defer cache.Stop()
+	var resSubstitutionOccurred bool
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, resSubstitutionOccurred = w.(*Response)
+	}))
+	batchGet(handler, []string{
+		"/",
+	})
+	if !resSubstitutionOccurred {
+		t.Fatal("Response substitution should have occurred")
+	}
+	r, _ := http.NewRequest("GET", "/", nil)
+	r.Header.Set("connection", "upgrade")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	if resSubstitutionOccurred {
+		t.Fatal("Response substitution should not have occurred")
+	}
+	if testMonitor.getMisses() != 2 {
+		t.Fatal("Websocket passthrough should count as miss")
+	}
+}
+
+// Nocache should pass through when triggered by header
+func TestNocacheHeader(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		Driver:  NewDriverLRU(10),
+		Monitor: testMonitor,
+	})
+	defer cache.Stop()
+	var resSubstitutionOccurred bool
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("microcache-nocache", "1")
+		_, resSubstitutionOccurred = w.(*Response)
+	}))
+	batchGet(handler, []string{"/"})
+	if !resSubstitutionOccurred {
+		t.Fatal("Response substitution should have occurred")
+	}
+	batchGet(handler, []string{"/"})
+	if resSubstitutionOccurred {
+		t.Fatal("Response substitution should not have occurred")
+	}
+	if testMonitor.getMisses() != 2 {
+		t.Fatal("Nocache should count as miss")
+	}
+}
+
+// TTL should be respected when used with compression
+func TestCompressorTTL(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:        30 * time.Second,
+		Monitor:    testMonitor,
+		Driver:     NewDriverLRU(10),
+		Compressor: CompressorSnappy{},
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	cache.offsetIncr(30 * time.Second)
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	if testMonitor.getMisses() != 2 || testMonitor.getHits() != 2 {
+		t.Fatal("TTL not respected - got", testMonitor.getHits(), "hits")
+	}
+}
+
+// Vary operates as expected
+func TestVary(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Vary:    []string{"foo"},
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "bar")
+		w.Header().Set("Microcache-Vary", "baz")
+	}))
+	cases := []struct {
+		url string
+		hdr map[string]string
+		hit bool
+	}{
+		{"/", map[string]string{"foo": "1"}, false},
+		{"/", map[string]string{"foo": "1"}, true},
+		{"/", map[string]string{"foo": "1", "bar": "1"}, false},
+		{"/", map[string]string{"foo": "1", "bar": "1"}, true},
+		{"/", map[string]string{"foo": "1", "bar": "2"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2"}, true},
+		{"/", map[string]string{"foo": "1", "bar": "2", "baz": "1"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2", "baz": "1"}, false},
+		{"/", map[string]string{"foo": "2", "bar": "2", "baz": "1"}, true},
+	}
+	for i, c := range cases {
+		h := http.Header{}
+		for k, v := range c.hdr {
+			h.Set(k, v)
+		}
+		r := getResponseWithHeader(handler, c.url, h)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
+	}
+}
+
+// Vary Query operates as expected
+func TestVaryQuery(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Microcache-Vary-Query", "foo")
+	}))
+	cases := []struct {
+		url string
+		hit bool
+	}{
+		{"/?foo=1", false},
+		{"/?foo=1", true},
+		{"/?foo=2", false},
+		{"/?foo=2", true},
+		{"/", false},
+		{"/?bar=1", true},
+		{"/?baz=2", true},
+	}
+	for i, c := range cases {
+		r := getResponse(handler, c.url)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
+	}
+}
+
+// Unsafe requests should miss
+func TestUnsafe(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	cases := []struct {
+		url    string
+		method string
+		hit    bool
+	}{
+		{"/", "POST", false},
+	}
+	for i, c := range cases {
+		r := getResponseWithMethod(handler, c.url, c.method)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
+	}
+	if testMonitor.getMisses() != 1 {
+		t.Fatal("Unsafe methods should cause miss")
+	}
+}
+
+// Unsafe requests should miss and purge objects
+func TestUnsafePurge(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	cases := []struct {
+		url    string
+		method string
+		hit    bool
+	}{
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "POST", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "PUT", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "DELETE", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "PATCH", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+	}
+	for i, c := range cases {
+		r := getResponseWithMethod(handler, c.url, c.method)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
+	}
+}
+
 // Stop
 func TestStop(t *testing.T) {
 	cache := New(Config{})
@@ -468,6 +703,21 @@ func parallelGet(handler http.Handler, urls []string) {
 
 func getResponse(handler http.Handler, url string) *httptest.ResponseRecorder {
 	r, _ := http.NewRequest("GET", url, nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	return w
+}
+
+func getResponseWithHeader(handler http.Handler, url string, h http.Header) *httptest.ResponseRecorder {
+	r, _ := http.NewRequest("GET", url, nil)
+	r.Header = h
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	return w
+}
+
+func getResponseWithMethod(handler http.Handler, url string, m string) *httptest.ResponseRecorder {
+	r, _ := http.NewRequest(m, url, nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 	return w

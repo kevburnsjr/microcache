@@ -134,7 +134,7 @@ type Config struct {
 }
 
 // New creates and returns a configured microcache instance
-func New(o Config) Microcache {
+func New(o Config) *microcache {
 	// Defaults
 	m := microcache{
 		Nocache:              o.Nocache,
@@ -240,7 +240,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		}
 
 		// Non-cacheable request method passthrough and purge
-		if r.Method != "GET" && r.Method != "HEAD" {
+		if r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
 			if m.Monitor != nil {
 				m.Monitor.Miss()
 			}
@@ -248,7 +248,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 				// HTTP spec requires caches to purge cached responses following
 				// successful unsafe request
 				ptw := passthroughWriter{w, 0}
-				h.ServeHTTP(ptw, r)
+				h.ServeHTTP(&ptw, r)
 				if ptw.status >= 200 && ptw.status < 400 {
 					m.Driver.Remove(objHash)
 				}
@@ -334,6 +334,10 @@ func (m *microcache) handleBackendResponse(
 		th.ServeHTTP(&beres, r)
 	} else {
 		h.ServeHTTP(&beres, r)
+	}
+
+	if !beres.headerWritten {
+		beres.status = http.StatusOK
 	}
 
 	// Log Error
