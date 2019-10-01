@@ -465,6 +465,31 @@ func TestNocacheHeader(t *testing.T) {
 	}
 }
 
+// TTL should be respected when used with compression
+func TestCompressorTTL(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:        30 * time.Second,
+		Monitor:    testMonitor,
+		Driver:     NewDriverLRU(10),
+		Compressor: CompressorSnappy{},
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	cache.offsetIncr(30 * time.Second)
+	batchGet(handler, []string{
+		"/",
+		"/",
+	})
+	if testMonitor.getMisses() != 2 || testMonitor.getHits() != 2 {
+		t.Fatal("TTL not respected - got", testMonitor.getHits(), "hits")
+	}
+}
+
 // Stop
 func TestStop(t *testing.T) {
 	cache := New(Config{})
