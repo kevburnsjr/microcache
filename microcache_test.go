@@ -125,6 +125,7 @@ func TestStaleWhileRevalidate(t *testing.T) {
 		StaleWhileRevalidate: 30 * time.Second,
 		Monitor:              testMonitor,
 		Driver:               NewDriverLRU(10),
+		Exposed:              true,
 	})
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
@@ -196,6 +197,7 @@ func TestStaleIfError(t *testing.T) {
 		Monitor:      testMonitor,
 		QueryIgnore:  []string{"fail"},
 		Driver:       NewDriverLRU(10),
+		Exposed:      true,
 	})
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(failureHandler))
