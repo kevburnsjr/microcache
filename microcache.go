@@ -134,7 +134,7 @@ type Config struct {
 }
 
 // New creates and returns a configured microcache instance
-func New(o Config) Microcache {
+func New(o Config) *microcache {
 	// Defaults
 	m := microcache{
 		Nocache:              o.Nocache,
