@@ -6,7 +6,7 @@ import (
 )
 
 // MonitorFunc turns a function into a Monitor
-func MonitorFunc(interval time.Duration, logFunc func(Stats)) Monitor {
+func MonitorFunc(interval time.Duration, logFunc func(Stats)) *monitorFunc {
 	return &monitorFunc{
 		interval: interval,
 		logFunc:  logFunc,
