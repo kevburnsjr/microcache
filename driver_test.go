@@ -8,7 +8,7 @@ import (
 // Remove should work as expected
 func TestRemove(t *testing.T) {
 	var testDriver = func(name string, d Driver) {
-		cache := New(Config{Driver:  d})
+		cache := New(Config{Driver: d})
 		defer cache.Stop()
 		handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 		batchGet(handler, []string{
@@ -33,7 +33,7 @@ func TestRemove(t *testing.T) {
 // Empty init should not fatal
 func TestEmptyInit(t *testing.T) {
 	var testDriver = func(name string, d Driver) {
-		cache := New(Config{Driver:  d})
+		cache := New(Config{Driver: d})
 		defer cache.Stop()
 		handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
 		batchGet(handler, []string{
