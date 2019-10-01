@@ -336,6 +336,10 @@ func (m *microcache) handleBackendResponse(
 		h.ServeHTTP(&beres, r)
 	}
 
+	if !beres.headerWritten {
+		beres.status = http.StatusOK
+	}
+
 	// Log Error
 	if beres.status >= 500 && m.Monitor != nil {
 		m.Monitor.Error()

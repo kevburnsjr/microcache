@@ -446,6 +446,25 @@ func TestWebsocketPassthrough(t *testing.T) {
 	}
 }
 
+// Nocache should pass through when triggered by header
+func TestNocacheHeader(t *testing.T) {
+	cache := New(Config{Driver: NewDriverLRU(10)})
+	defer cache.Stop()
+	var resSubstitutionOccurred bool
+	handler := cache.Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("microcache-nocache", "1")
+		_, resSubstitutionOccurred = w.(*Response)
+	}))
+	batchGet(handler, []string{"/"})
+	if !resSubstitutionOccurred {
+		t.Fatal("Response substitution should have occurred")
+	}
+	batchGet(handler, []string{"/"})
+	if resSubstitutionOccurred {
+		t.Fatal("Response substitution should not have occurred")
+	}
+}
+
 // Stop
 func TestStop(t *testing.T) {
 	cache := New(Config{})
