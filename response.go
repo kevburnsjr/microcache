@@ -65,7 +65,7 @@ type passthroughWriter struct {
 	status int
 }
 
-func (w passthroughWriter) WriteHeader(code int) {
+func (w *passthroughWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
 }

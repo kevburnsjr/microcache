@@ -529,7 +529,37 @@ func TestVary(t *testing.T) {
 		}
 		r := getResponseWithHeader(handler, c.url, h)
 		if c.hit != (r.Header().Get("microcache") == "HIT") {
-			t.Fatalf("Hit should have been %v for case %d", c.hit, i)
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
+		}
+	}
+}
+
+// Unsafe requests should miss and purge objects
+func TestUnsafePurge(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:     30 * time.Second,
+		Monitor: testMonitor,
+		Driver:  NewDriverLRU(10),
+		Exposed: true,
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	cases := []struct {
+		url    string
+		method string
+		hit    bool
+	}{
+		{"/", "GET", false},
+		{"/", "GET", true},
+		{"/", "POST", false},
+		{"/", "GET", false},
+		{"/", "GET", true},
+	}
+	for i, c := range cases {
+		r := getResponseWithMethod(handler, c.url, c.method)
+		if c.hit != (r.Header().Get("microcache") == "HIT") {
+			t.Fatalf("Hit should have been %v for case %d", c.hit, i+1)
 		}
 	}
 }
@@ -587,6 +617,13 @@ func getResponse(handler http.Handler, url string) *httptest.ResponseRecorder {
 func getResponseWithHeader(handler http.Handler, url string, h http.Header) *httptest.ResponseRecorder {
 	r, _ := http.NewRequest("GET", url, nil)
 	r.Header = h
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	return w
+}
+
+func getResponseWithMethod(handler http.Handler, url string, m string) *httptest.ResponseRecorder {
+	r, _ := http.NewRequest(m, url, nil)
 	w := httptest.NewRecorder()
 	handler.ServeHTTP(w, r)
 	return w
