@@ -9,7 +9,7 @@ import (
 func TestMonitor(t *testing.T) {
 	var hits int
 	var expected = 4
-	testMonitor := MonitorFunc(100 * time.Second, func(s Stats) {
+	testMonitor := MonitorFunc(100*time.Second, func(s Stats) {
 		hits = s.Hits
 	})
 	testMonitor.hits = int64(expected)
