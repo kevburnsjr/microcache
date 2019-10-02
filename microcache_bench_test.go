@@ -2,6 +2,7 @@ package microcache
 
 import (
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -21,7 +22,7 @@ func BenchmarkHits(b *testing.B) {
 	}
 }
 
-func BenchmarkMisses(b *testing.B) {
+func BenchmarkNocache(b *testing.B) {
 	cache := New(Config{
 		Nocache: true,
 		Driver:  NewDriverLRU(10),
@@ -32,6 +33,22 @@ func BenchmarkMisses(b *testing.B) {
 	w := &noopWriter{http.Header{}}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		handler.ServeHTTP(w, r)
+	}
+}
+
+func BenchmarkMisses(b *testing.B) {
+	cache := New(Config{
+		TTL:    30 * time.Second,
+		Driver: NewDriverLRU(10),
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(noopSuccessHandler))
+	r, _ := http.NewRequest("GET", "/", nil)
+	w := &noopWriter{http.Header{}}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.URL.Path = "/" + strconv.Itoa(i)
 		handler.ServeHTTP(w, r)
 	}
 }
@@ -52,10 +69,10 @@ func BenchmarkCompression1kHits(b *testing.B) {
 	}
 }
 
-func BenchmarkCompression1kMisses(b *testing.B) {
+func BenchmarkCompression1kNocache(b *testing.B) {
 	cache := New(Config{
-		Nocache: true,
-		Driver:  NewDriverLRU(10),
+		Nocache:    true,
+		Driver:     NewDriverLRU(10),
 		Compressor: CompressorSnappy{},
 	})
 	defer cache.Stop()
@@ -64,6 +81,23 @@ func BenchmarkCompression1kMisses(b *testing.B) {
 	w := &noopWriter{http.Header{}}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
+		handler.ServeHTTP(w, r)
+	}
+}
+
+func BenchmarkCompression1kMisses(b *testing.B) {
+	cache := New(Config{
+		TTL:        30 * time.Second,
+		Driver:     NewDriverLRU(10),
+		Compressor: CompressorSnappy{},
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(success1kHandler))
+	r, _ := http.NewRequest("GET", "/", nil)
+	w := &noopWriter{http.Header{}}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		r.URL.Path = "/" + strconv.Itoa(i)
 		handler.ServeHTTP(w, r)
 	}
 }
