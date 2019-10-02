@@ -9,34 +9,6 @@ import (
 	"github.com/kevburnsjr/microcache"
 )
 
-type handler struct {
-}
-
-var body = bytes.Repeat([]byte("1234567890"), 1e3)
-
-// This example fills up to 1.2GB of memory, so at least 2.0GB of RAM is recommended
-func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-
-	// Enable cache
-	w.Header().Set("microcache-cache", "1")
-
-	// Return a 10 kilobyte response body
-	w.Write(body)
-}
-
-func logStats(stats microcache.Stats) {
-	total := stats.Hits + stats.Misses + stats.Stales
-	log.Printf("Size: %d, Total: %d, Hits: %d, Misses: %d, Stales: %d, Backend: %d, Errors: %d\n",
-		stats.Size,
-		total,
-		stats.Hits,
-		stats.Misses,
-		stats.Stales,
-		stats.Backend,
-		stats.Errors,
-	)
-}
-
 func main() {
 	// - Nocache: true
 	// Cache is disabled for all requests by default
@@ -119,4 +91,32 @@ func main() {
 	h := cache.Middleware(handler{})
 
 	http.ListenAndServe(":80", h)
+}
+
+type handler struct {
+}
+
+var body = bytes.Repeat([]byte("1234567890"), 1e3)
+
+// This example fills up to 1.2GB of memory, so at least 2.0GB of RAM is recommended
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	// Enable cache
+	w.Header().Set("microcache-cache", "1")
+
+	// Return a 10 kilobyte response body
+	w.Write(body)
+}
+
+func logStats(stats microcache.Stats) {
+	total := stats.Hits + stats.Misses + stats.Stales
+	log.Printf("Size: %d, Total: %d, Hits: %d, Misses: %d, Stales: %d, Backend: %d, Errors: %d\n",
+		stats.Size,
+		total,
+		stats.Hits,
+		stats.Misses,
+		stats.Stales,
+		stats.Backend,
+		stats.Errors,
+	)
 }

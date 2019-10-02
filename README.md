@@ -50,6 +50,30 @@ import (
 	"github.com/kevburnsjr/microcache"
 )
 
+func main() {
+	cache := microcache.New(microcache.Config{
+		Nocache:              true,
+		Timeout:              3 * time.Second,
+		TTL:                  30 * time.Second,
+		StaleIfError:         3600 * time.Second,
+		StaleRecache:         true,
+		StaleWhileRevalidate: 30 * time.Second,
+		CollapsedForwarding:  true,
+		HashQuery:            true,
+		QueryIgnore:          []string{},
+		Exposed:              true,
+		SuppressAgeHeader:    false,
+		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
+		Driver:               microcache.NewDriverLRU(1e4),
+		Compressor:           microcache.CompressorSnappy{},
+	})
+	defer cache.Stop()
+
+	h := cache.Middleware(handler{})
+
+	http.ListenAndServe(":80", h)
+}
+
 type handler struct {
 }
 
@@ -76,30 +100,6 @@ func logStats(stats microcache.Stats) {
 		stats.Backend,
 		stats.Errors,
 	)
-}
-
-func main() {
-	cache := microcache.New(microcache.Config{
-		Nocache:              true,
-		Timeout:              3 * time.Second,
-		TTL:                  30 * time.Second,
-		StaleIfError:         3600 * time.Second,
-		StaleRecache:         true,
-		StaleWhileRevalidate: 30 * time.Second,
-		CollapsedForwarding:  true,
-		HashQuery:            true,
-		QueryIgnore:          []string{},
-		Exposed:              true,
-		SuppressAgeHeader:    false,
-		Monitor:              microcache.MonitorFunc(5*time.Second, logStats),
-		Driver:               microcache.NewDriverLRU(1e4),
-		Compressor:           microcache.CompressorSnappy{},
-	})
-	defer cache.Stop()
-
-	h := cache.Middleware(handler{})
-
-	http.ListenAndServe(":80", h)
 }
 ```
 
