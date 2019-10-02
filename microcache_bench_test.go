@@ -102,6 +102,61 @@ func BenchmarkCompression1kMisses(b *testing.B) {
 	}
 }
 
+func BenchmarkParallelCompression1kHits(b *testing.B) {
+	cache := New(Config{
+		TTL:        30 * time.Second,
+		Driver:     NewDriverLRU(10),
+		Compressor: CompressorSnappy{},
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(success1kHandler))
+	r, _ := http.NewRequest("GET", "/", nil)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		w := &noopWriter{http.Header{}}
+		for i := 0; pb.Next(); i++ {
+			handler.ServeHTTP(w, r)
+		}
+	})
+}
+
+func BenchmarkParallelCompression1kNocache(b *testing.B) {
+	cache := New(Config{
+		Nocache:    true,
+		Driver:     NewDriverLRU(10),
+		Compressor: CompressorSnappy{},
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(success1kHandler))
+	r, _ := http.NewRequest("GET", "/", nil)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		w := &noopWriter{http.Header{}}
+		for i := 0; pb.Next(); i++ {
+			handler.ServeHTTP(w, r)
+		}
+	})
+}
+
+func BenchmarkParallelCompression1kMisses(b *testing.B) {
+	cache := New(Config{
+		TTL:        30 * time.Second,
+		Driver:     NewDriverLRU(10),
+		Compressor: CompressorSnappy{},
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(success1kHandler))
+	r, _ := http.NewRequest("GET", "/", nil)
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		w := &noopWriter{http.Header{}}
+		for i := 0; pb.Next(); i++ {
+			r.URL.Path = "/" + strconv.Itoa(i)
+			handler.ServeHTTP(w, r)
+		}
+	})
+}
+
 type noopWriter struct {
 	header http.Header
 }
