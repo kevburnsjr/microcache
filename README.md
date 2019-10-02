@@ -152,31 +152,12 @@ snappy compress 48.836002ms  106,613 bytes (5.8x)
 zlib   expand 211.538416ms
 gzip   expand 220.011961ms
 snappy expand 26.973263ms
-
-> go run tools/compare_compression.go -f medium.json
-Original: 279,368 bytes of json
-zlib   compress 282.549098ms 19,825 bytes (14.1x)
-gzip   compress 275.961026ms 19,837 bytes (14.1x)
-snappy compress 16.452706ms  37,096 bytes (7.5x)
-zlib   expand 86.704103ms
-gzip   expand 81.188856ms
-snappy expand 10.557594ms
-
-> go run tools/compare_compression.go -f small.json
-Original: 53,129 bytes of json
-zlib   compress 73.204418ms 5,084 bytes (10.5x)
-gzip   compress 74.150401ms 5,096 bytes (10.4x)
-snappy compress 5.225558ms  8,412 bytes (6.3x)
-zlib   expand 18.764693ms
-gzip   expand 18.797717ms
-snappy expand 2.354814ms
 ```
 
 ## Benchmarks
 
-All benchmarks are lies. Running example code above on 5820k i7 @ 3.9Ghz DDR4
-
-GOMAXPROCS=2, 10KB response
+All benchmarks are lies. Running example code above on 5820k i7 @ 3.9Ghz DDR4.
+GOMAXPROCS=2, 10KB response.
 
 ```
 > gobench -u http://localhost/ -c 10 -t 10
@@ -192,9 +173,11 @@ Read throughput:                 410714568 bytes/sec
 Write throughput:                  3273453 bytes/sec
 Test time:                              10 sec
 ```
+
 The intent of this middleware is to serve cached content with minimal overhead. We could
 probably do some more gymnastics to reduce allocs but overall I'm quite satisfied with
-performance. It achieves the goal of reducing hit response timing to microseconds.
+performance. It achieves the goal of reducing hit response times to the order of microseconds.
+
 ```
 $ go test -bench=. -benchmem
 goos: linux
