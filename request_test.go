@@ -33,7 +33,7 @@ func TestBuildRequestOpts(t *testing.T) {
 		{"microcache-ttl", "10", RequestOpts{ttl: time.Duration(10 * time.Second)}},
 		{"microcache-stale-if-error", "10", RequestOpts{staleIfError: time.Duration(10 * time.Second)}},
 		{"microcache-stale-while-revalidate", "10", RequestOpts{staleWhileRevalidate: time.Duration(10 * time.Second)}},
-		{"microcache-collapsed-fowarding", "1", RequestOpts{collapsedForwarding: true}},
+		{"microcache-collapsed-forwarding", "1", RequestOpts{collapsedForwarding: true}},
 		{"microcache-stale-recache", "1", RequestOpts{staleRecache: true}},
 		{"Microcache-Vary-Query", "a", RequestOpts{varyQuery: []string{"a"}}},
 	})
@@ -41,7 +41,7 @@ func TestBuildRequestOpts(t *testing.T) {
 		{"microcache-cache", "1", RequestOpts{nocache: false}},
 	})
 	runCases(New(Config{CollapsedForwarding: true}), []tc{
-		{"microcache-no-collapsed-fowarding", "1", RequestOpts{collapsedForwarding: false}},
+		{"microcache-no-collapsed-forwarding", "1", RequestOpts{collapsedForwarding: false}},
 	})
 	runCases(New(Config{StaleRecache: true}), []tc{
 		{"microcache-no-stale-recache", "1", RequestOpts{staleRecache: false}},

@@ -106,13 +106,13 @@ func buildRequestOpts(m *microcache, res Response, r *http.Request) RequestOpts 
 		req.staleWhileRevalidate = time.Duration(staleWhileRevalidateHdr) * time.Second
 	}
 
-	// w.Header().Set("microcache-collapsed-fowarding", "1")
-	if headers.Get("microcache-collapsed-fowarding") != "" {
+	// w.Header().Set("microcache-collapsed-forwarding", "1")
+	if headers.Get("microcache-collapsed-forwarding") != "" {
 		req.collapsedForwarding = true
 	}
 
-	// w.Header().Set("microcache-no-collapsed-fowarding", "1")
-	if headers.Get("microcache-no-collapsed-fowarding") != "" {
+	// w.Header().Set("microcache-no-collapsed-forwarding", "1")
+	if headers.Get("microcache-no-collapsed-forwarding") != "" {
 		req.collapsedForwarding = false
 	}
 
