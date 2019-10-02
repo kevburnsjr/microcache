@@ -1,6 +1,7 @@
 package microcache
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -297,6 +298,33 @@ func TestTimeout(t *testing.T) {
 	})
 	if testMonitor.getErrors() != 1 || time.Since(start) > 20*time.Millisecond {
 		t.Fatal("Timeout not respected - got", testMonitor.getErrors(), "errors")
+	}
+}
+
+// Request Context Cancel should not cause error
+func TestRequestContextCancel(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:                  30 * time.Second,
+		StaleWhileRevalidate: 30 * time.Second,
+		Timeout:              10 * time.Second,
+		CollapsedForwarding:  true,
+		Monitor:              testMonitor,
+		Driver:               NewDriverLRU(10),
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(timelySuccessHandler))
+	batchGet(handler, []string{"/"})
+	cache.offsetIncr(31 * time.Second)
+	r, _ := http.NewRequest("GET", "/", nil)
+	ctx, cancel := context.WithCancel(r.Context())
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	cancel()
+	time.Sleep(1 * time.Millisecond)
+	if testMonitor.getErrors() > 0 {
+		t.Fatal("TimeoutHandler returned error")
 	}
 }
 
