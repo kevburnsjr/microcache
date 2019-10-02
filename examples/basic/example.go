@@ -1,10 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"log"
-	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/kevburnsjr/microcache"
@@ -13,22 +12,16 @@ import (
 type handler struct {
 }
 
+var body = bytes.Repeat([]byte("1234567890"), 1e3)
+
 // This example fills up to 1.2GB of memory, so at least 2.0GB of RAM is recommended
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Enable cache
 	w.Header().Set("microcache-cache", "1")
 
-	randn := rand.Intn(10) + 1
-
-	// Sleep between 10 and 100 ms
-	time.Sleep(time.Duration(randn*10) * time.Millisecond)
-
-	// Return a response body of random size between 10 and 100 kilobytes
-	// Requests per sec for cache hits is mostly dependent on response size
-	// This cache can saturate a gigabit network connection with cache hits
-	// containing response bodies as small as 10kb on a dual core 3.3 Ghz i7 VM
-	http.Error(w, strings.Repeat("1234567890", randn*1e3), 200)
+	// Return a 10 kilobyte response body
+	w.Write(body)
 }
 
 func logStats(stats microcache.Stats) {
