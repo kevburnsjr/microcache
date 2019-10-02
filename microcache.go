@@ -40,7 +40,8 @@ type microcache struct {
 	collapseMutex   *sync.Mutex
 
 	// Used to advance time for testing
-	offset time.Duration
+	offset      time.Duration
+	offsetMutex *sync.RWMutex
 }
 
 type Config struct {
@@ -155,6 +156,7 @@ func New(o Config) *microcache {
 		revalidateMutex:      &sync.Mutex{},
 		collapse:             map[string]*sync.Mutex{},
 		collapseMutex:        &sync.Mutex{},
+		offsetMutex:          &sync.RWMutex{},
 	}
 	if o.Driver == nil {
 		m.Driver = NewDriverLRU(1e4) // default 10k cache items
@@ -180,6 +182,9 @@ func New(o Config) *microcache {
 //    chain.Append(mx.Middleware)
 //
 func (m *microcache) Middleware(h http.Handler) http.Handler {
+	if m.Timeout > 0 {
+		h = http.TimeoutHandler(h, m.Timeout, "Timed out")
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Websocket passthrough
 		upgrade := strings.ToLower(r.Header.Get("connection")) == "upgrade"
@@ -259,7 +264,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 		}
 
 		// Fresh response object found
-		if obj.found && obj.expires.After(time.Now().Add(m.offset)) {
+		if obj.found && obj.expires.After(m.now()) {
 			if m.Monitor != nil {
 				m.Monitor.Hit()
 			}
@@ -273,7 +278,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 
 		// Stale While Revalidate
 		if obj.found && req.staleWhileRevalidate > 0 &&
-			obj.expires.Add(req.staleWhileRevalidate).After(time.Now().Add(m.offset)) {
+			obj.expires.Add(req.staleWhileRevalidate).After(m.now()) {
 			if m.Monitor != nil {
 				m.Monitor.Stale()
 			}
@@ -291,6 +296,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 			}
 			m.revalidateMutex.Unlock()
 			if !revalidating {
+				br := newBackgroundRequest(r)
 				go func() {
 					defer func() {
 						// Clear revalidation lock
@@ -298,8 +304,7 @@ func (m *microcache) Middleware(h http.Handler) http.Handler {
 						delete(m.revalidating, objHash)
 						m.revalidateMutex.Unlock()
 					}()
-
-					m.handleBackendResponse(h, w, r, reqHash, req, objHash, obj, true)
+					m.handleBackendResponse(h, w, br, reqHash, req, objHash, obj, true)
 				}()
 			}
 
@@ -329,12 +334,7 @@ func (m *microcache) handleBackendResponse(
 	beres := Response{header: http.Header{}}
 
 	// Execute request
-	if m.Timeout > 0 {
-		th := http.TimeoutHandler(h, m.Timeout, "Timed out")
-		th.ServeHTTP(&beres, r)
-	} else {
-		h.ServeHTTP(&beres, r)
-	}
+	h.ServeHTTP(&beres, r)
 
 	if !beres.headerWritten {
 		beres.status = http.StatusOK
@@ -347,10 +347,10 @@ func (m *microcache) handleBackendResponse(
 
 	// Serve Stale
 	if beres.status >= 500 && obj.found {
-		serveStale := obj.expires.Add(req.staleIfError).After(time.Now().Add(m.offset))
+		serveStale := obj.expires.Add(req.staleIfError).After(m.now())
 		// Extend stale response expiration by staleIfError grace period
 		if req.found && serveStale && req.staleRecache {
-			obj.expires = obj.date.Add(m.offset).Add(req.ttl)
+			obj.expires = obj.date.Add(m.getOffset()).Add(req.ttl)
 			m.store(objHash, obj)
 		}
 		if !background && serveStale {
@@ -376,7 +376,7 @@ func (m *microcache) handleBackendResponse(
 		}
 		// Cache response
 		if !req.nocache {
-			beres.expires = time.Now().Add(m.offset).Add(req.ttl)
+			beres.expires = m.now().Add(req.ttl)
 			m.store(objHash, beres)
 		}
 	}
@@ -418,7 +418,7 @@ func (m *microcache) Start() {
 // setAgeHeader sets the age header if not suppressed
 func (m *microcache) setAgeHeader(w http.ResponseWriter, obj Response) {
 	if !m.SuppressAgeHeader {
-		age := (time.Now().Add(m.offset).Unix() - obj.date.Unix())
+		age := (m.now().Unix() - obj.date.Unix())
 		w.Header().Set("age", fmt.Sprintf("%d", age))
 	}
 }
@@ -444,5 +444,19 @@ func (m *microcache) Stop() {
 
 // Increments the offset for testing purposes
 func (m *microcache) offsetIncr(o time.Duration) {
+	m.offsetMutex.Lock()
+	defer m.offsetMutex.Unlock()
 	m.offset += o
+}
+
+// Get offset
+func (m *microcache) getOffset() time.Duration {
+	m.offsetMutex.RLock()
+	defer m.offsetMutex.RUnlock()
+	return m.offset
+}
+
+// Get current time with offset
+func (m *microcache) now() time.Time {
+	return time.Now().Add(m.getOffset())
 }
