@@ -27,10 +27,10 @@ func TestCompressorSnappy(t *testing.T) {
 	c := CompressorSnappy{}
 	crRes := c.Compress(res)
 	if len(res.body) <= len(crRes.body) {
-		t.Fatal("No Compression in Gzip")
+		t.Fatal("No Compression in Snappy")
 	}
 	exRes := c.Expand(crRes)
 	if !bytes.Equal(res.body, exRes.body) {
-		t.Fatal("Expanded compression does not match in Gzip")
+		t.Fatal("Expanded compression does not match in Snappy")
 	}
 }
