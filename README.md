@@ -42,10 +42,9 @@ More info in the docs: https://godoc.org/github.com/kevburnsjr/microcache
 package main
 
 import (
+	"bytes"
 	"log"
-	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/kevburnsjr/microcache"
@@ -54,22 +53,16 @@ import (
 type handler struct {
 }
 
+var body = bytes.Repeat([]byte("1234567890"), 1e3)
+
 // This example fills up to 1.2GB of memory, so at least 2.0GB of RAM is recommended
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Enable cache
 	w.Header().Set("microcache-cache", "1")
 
-	randn := rand.Intn(10) + 1
-
-	// Sleep between 10 and 100 ms
-	time.Sleep(time.Duration(randn*10) * time.Millisecond)
-
-	// Return a response body of random size between 10 and 100 kilobytes
-	// Requests per sec for cache hits is mostly dependent on response size
-	// This cache can saturate a gigabit network connection with cache hits
-	// containing response bodies as small as 10kb on a dual core 3.3 Ghz i7 VM
-	http.Error(w, strings.Repeat("1234567890", randn*1e3), 200)
+	// Return a 10 kilobyte response body
+	w.Write(body)
 }
 
 func logStats(stats microcache.Stats) {
@@ -181,21 +174,43 @@ snappy expand 2.354814ms
 
 ## Benchmarks
 
-All benchmarks are lies. Dual core 3.3Ghz i7 DDR4 Centos 7 VM w/ 10KB response (see example above)
+All benchmarks are lies. Running example code above on 5820k i7 @ 3.9Ghz DDR4
+
+GOMAXPROCS=2, 10KB response
 
 ```
 > gobench -u http://localhost/ -c 10 -t 10
 Dispatching 10 clients
 Waiting for results...
 
-Requests:                           110705 hits
-Successful requests:                110705 hits
+Requests:                           404120 hits
+Successful requests:                404120 hits
 Network failed:                          0 hits
 Bad requests failed (!2xx):              0 hits
-Successful requests rate:            11070 hits/sec
-Read throughput:                1109430818 bytes/sec
-Write throughput:                   896791 bytes/sec
+Successful requests rate:            40412 hits/sec
+Read throughput:                 410714568 bytes/sec
+Write throughput:                  3273453 bytes/sec
 Test time:                              10 sec
+```
+The intent of this middleware is to serve cached content with minimal overhead. We could
+probably do some more gymnastics to reduce allocs but overall I'm quite satisfied with
+performance. It achieves the goal of reducing hit response timing to microseconds.
+```
+$ go test -bench=. -benchmem
+goos: linux
+goarch: amd64
+pkg: github.com/kevburnsjr/microcache
+BenchmarkHits-12                            827476   1449 ns/op    678 B/op   14 allocs/op
+BenchmarkNocache-12                        1968576    613 ns/op    312 B/op    6 allocs/op
+BenchmarkMisses-12                          307652   3890 ns/op   1765 B/op   37 allocs/op
+BenchmarkCompression1kHits-12               648564   1928 ns/op   1384 B/op   15 allocs/op
+BenchmarkCompression1kNocache-12           1965351    611 ns/op    312 B/op    6 allocs/op
+BenchmarkCompression1kMisses-12             232980   5119 ns/op   3365 B/op   39 allocs/op
+BenchmarkParallelCompression1kHits-12      2525994    511 ns/op   1383 B/op   15 allocs/op
+BenchmarkParallelCompression1kNocache-12   3876728    335 ns/op    312 B/op    6 allocs/op
+BenchmarkParallelCompression1kMisses-12     666580   2226 ns/op   3326 B/op   38 allocs/op
+PASS
+ok      github.com/kevburnsjr/microcache        7.188s
 ```
 
 ## Release Status
