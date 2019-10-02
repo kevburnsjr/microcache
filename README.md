@@ -103,7 +103,7 @@ func logStats(stats microcache.Stats) {
 }
 ```
 
-## Benefits
+## Features
 
 May improve service efficiency by reducing origin read traffic
 
