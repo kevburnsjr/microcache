@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -291,7 +292,7 @@ func TestTimeout(t *testing.T) {
 	}
 }
 
-// Request Context Cancel should not cause error
+// Request context cancellation should not cause error from TimeoutHandler
 func TestRequestContextCancel(t *testing.T) {
 	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
 	cache := New(Config{
