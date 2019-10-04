@@ -14,7 +14,7 @@ become unavailable and it is not always feasible or economical to add a separate
 caching layer between all services.
 
 To date, very few software packages exist to solve this specific problem. Most
-microcache deployments make use of existing HTTP caching middleware like NIGNX. This
+microcache deployments make use of existing HTTP caching middleware like NGINX. This
 presents a challenge. When an HTTP cache exists for the purpose of microcaching between
 an origin server and a CDN, the origin must choose whether to use standard HTTP caching
 headers with aggressive short TTLs for the microcache or less aggressive longer TTL
