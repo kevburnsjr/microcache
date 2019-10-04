@@ -175,8 +175,8 @@ Test time:                              10 sec
 ```
 
 The intent of this middleware is to serve cached content with minimal overhead. We could
-probably do some more gymnastics to reduce allocs but overall I'm quite satisfied with
-performance. It achieves the goal of reducing hit response times to the order of microseconds.
+probably do some more gymnastics to reduce allocs but overall performance is quite good.
+It achieves the goal of reducing hit response times to the order of microseconds.
 
 ```
 $ go test -bench=. -benchmem
