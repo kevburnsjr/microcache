@@ -1,9 +1,11 @@
 package microcache
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -173,26 +175,16 @@ func TestCollapsedFowardingStaleWhileRevalidate(t *testing.T) {
 	})
 	defer cache.Stop()
 	handler := cache.Middleware(http.HandlerFunc(timelySuccessHandler))
-	batchGet(handler, []string{
-		"/",
-	})
+	batchGet(handler, []string{"/"})
 	cache.offsetIncr(31 * time.Second)
 	start := time.Now()
-	parallelGet(handler, []string{
-		"/",
-		"/",
-		"/",
-		"/",
-		"/",
-		"/",
-	})
+	parallelGet(handler, strings.Split(strings.Repeat(",/", 10)[1:], ","))
 	end := time.Since(start)
 	// Sleep for a little bit to give the StaleWhileRevalidate goroutines some time to start.
 	time.Sleep(time.Millisecond * 10)
-	if testMonitor.getMisses() != 1 || testMonitor.getStales() != 6 ||
+	if testMonitor.getMisses() != 1 || testMonitor.getStales() != 10 ||
 		testMonitor.getBackends() != 2 || end > 20*time.Millisecond {
-		t.Logf("%#v", testMonitor)
-		t.Fatal("CollapsedFowarding and StaleWhileRevalidate not respected - got", testMonitor.getBackends(), "backend")
+		t.Fatalf("CollapsedFowarding and StaleWhileRevalidate not respected %s", dumpMonitor(testMonitor))
 	}
 }
 
@@ -297,6 +289,40 @@ func TestTimeout(t *testing.T) {
 	})
 	if testMonitor.getErrors() != 1 || time.Since(start) > 20*time.Millisecond {
 		t.Fatal("Timeout not respected - got", testMonitor.getErrors(), "errors")
+	}
+}
+
+// Request context cancellation should not cause error from TimeoutHandler
+func TestRequestContextCancel(t *testing.T) {
+	testMonitor := &monitorFunc{interval: 100 * time.Second, logFunc: func(Stats) {}}
+	cache := New(Config{
+		TTL:                  30 * time.Second,
+		StaleWhileRevalidate: 30 * time.Second,
+		Timeout:              10 * time.Second,
+		CollapsedForwarding:  true,
+		Monitor:              testMonitor,
+		Driver:               NewDriverLRU(10),
+	})
+	defer cache.Stop()
+	handler := cache.Middleware(http.HandlerFunc(timelySuccessHandler))
+	batchGet(handler, []string{"/"})
+	cache.offsetIncr(31 * time.Second)
+	r, _ := http.NewRequest("GET", "/", nil)
+	ctx, cancel := context.WithCancel(r.Context())
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, r)
+	cancel()
+	time.Sleep(1 * time.Millisecond)
+	if testMonitor.getErrors() > 0 {
+		t.Fatal("TimeoutHandler returned error")
+	}
+	cache.offsetIncr(31 * time.Second)
+	cache.Timeout = 1 * time.Millisecond
+	batchGet(cache.Middleware(http.HandlerFunc(slowSuccessHandler)), []string{"/"})
+	time.Sleep(2 * time.Millisecond)
+	if testMonitor.getErrors() != 1 {
+		t.Fatal("Request did not time out")
 	}
 }
 
@@ -744,4 +770,14 @@ func slowSuccessHandler(w http.ResponseWriter, r *http.Request) {
 func timelySuccessHandler(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(10 * time.Millisecond)
 	http.Error(w, "done", 200)
+}
+
+func dumpMonitor(m *monitorFunc) string {
+	return fmt.Sprintf("Hits: %d, Misses: %d, Backend: %d, Stales: %d, Errors: %d",
+		m.getHits(),
+		m.getMisses(),
+		m.getBackends(),
+		m.getStales(),
+		m.getErrors(),
+	)
 }
